@@ -45,6 +45,9 @@ let
                 autoApprove = true;
               };
             };
+            skills = {
+              commit-style.enable = true;
+            };
             environment = {
               variables = {
                 PI_TEST_VAR = "hello-nixpi";
@@ -63,24 +66,28 @@ let
 
   # Assertions
   hasRipgrep = lib.any (p: p.pname or p.name == "ripgrep") cfg.finalRuntimePackages;
+  hasGit = lib.any (p: p.pname or p.name == "git") cfg.finalRuntimePackages;
   hasEchoPkg = lib.length cfg.finalRuntimePackages >= 1;
   hasPlanModeSetting = cfg.settings.planMode.mode == "thorough";
   hasAntigravityProvider = cfg.providers.antigravity.package != null;
   hasCustomProvider = cfg.providers.custom-created.baseUrl == "https://custom.provider.test";
   hasCorrectDefaultProvider = cfg.settings.defaultProvider == "antigravity";
   hasCorrectDefaultModel = cfg.settings.defaultModel == "gemini-3.7-flash";
+  hasCommitStyleSkill = cfg.skills ? commit-style && cfg.skills.commit-style.package != null;
 
   # Check that built-in providers are pre-populated on the providers object
   hasOpenAIProvider = cfg.providers ? openai && cfg.providers.openai.models ? "gpt-4o";
 
   allChecksPass =
     hasRipgrep
+    && hasGit
     && hasEchoPkg
     && hasPlanModeSetting
     && hasAntigravityProvider
     && hasCustomProvider
     && hasCorrectDefaultProvider
     && hasCorrectDefaultModel
+    && hasCommitStyleSkill
     && hasOpenAIProvider;
 in
 pkgs.runCommand "nixpi-eval-test" { } ''

@@ -1,0 +1,7 @@
+{ ... }:
+
+{
+  imports = [
+    ./commit-style.nix
+  ];
+}

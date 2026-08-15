@@ -14,6 +14,7 @@
 - [Home Manager Integration](#home-manager-integration)
 - [Development Shell (`nix develop`)](#development-shell-nix-develop)
 - [Managing Extensions](#managing-extensions)
+- [Managing Skills (e.g. Conventional Commits)](#managing-skills-eg-conventional-commits)
 - [Automatic Runtime Dependencies](#automatic-runtime-dependencies)
 - [Custom Providers (e.g. Antigravity)](#custom-providers-eg-antigravity)
 - [Secret Safety](#secret-safety)
@@ -239,6 +240,50 @@ programs.pi.extensions = {
 
 ---
 
+## Managing Skills (e.g. Conventional Commits)
+
+Skills teach Pi procedural workflows, domain specifications, and coding guidelines.
+
+### 1. Enable Built-in Skills (e.g. `commit-style`)
+
+`nixpi` provides a 100% Nix-configured `commit-style` skill based on the [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/#specification) specification:
+
+```nix
+programs.pi.skills.commit-style = {
+  enable = true;
+  # Optional customizations configured entirely in Nix:
+  scopes = [ "api" "auth" "cli" "core" "docs" "ui" ];
+  customGuidelines = [
+    "Always make minimal, atomic single-intent commits."
+    "Keep commit summary lines under 72 characters."
+  ];
+};
+```
+
+When enabled, `commit-style` automatically provides the full Conventional Commits specification rules, structural formatting (`<type>[optional scope]: <description>`), imperative tense rules, breaking change indicators (`!` and `BREAKING CHANGE:`), and concrete examples (e.g. `fix(api): prevent null pointer on missing ID`) to Pi.
+
+### 2. Declare Custom Skills via `mkPiSkill`
+
+You can also construct custom skills entirely in Nix:
+
+```nix
+programs.pi.rawSkills = [
+  (nixpi.lib.mkPiSkill {
+    name = "clean-code-review";
+    description = "Instructions for reviewing code according to Clean Code standards";
+    content = ''
+      # Clean Code Review Runbook
+      - Verify Single Responsibility Principle (SRP).
+      - Check that functions aim for < 10 lines.
+      - Ensure zero dead code and high cohesion.
+    '';
+    runtimePackages = [ pkgs.git ];
+  })
+];
+```
+
+---
+
 ## Automatic Runtime Dependencies
 
 When an extension requires external CLI tools (like `rg`, `git`, or `jq`), enabling the extension automatically pulls those packages into the wrapped `pi` environment's `PATH`.
@@ -405,7 +450,9 @@ in {
  - `lib.mkPiPrompt { name, content, argumentHint }` - Prompt helper
  - `lib.mkPiTheme { name, colors }` - Theme helper
  - `piModules.default` - Core module aggregator
+ - `piModules.skills.commit-style` - Conventional Commits skill module
  - `piModules.providers.antigravity` - Antigravity provider module
+ - `packages.<system>.commit-style` - Conventional Commits skill package
  - `packages.<system>.antigravity` - Antigravity provider package
  - `homeManagerModules.default` - Home Manager integration module
  - `templates.standalone`, `templates.home-manager`, `templates.devshell` - Ready-to-use templates

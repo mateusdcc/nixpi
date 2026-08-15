@@ -55,6 +55,30 @@ let
     map (prov: prov.environment.variables or { }) (builtins.attrValues enabledProviders)
   );
 
+  # Collect packages and runtimePackages from enabled typed skills
+  enabledSkills =
+    if builtins.isAttrs (cfg.skills or { }) then
+      lib.filterAttrs (n: skill: skill.enable or false) (cfg.skills or { })
+    else
+      { };
+
+  skillPackages = lib.concatMap (
+    skill:
+    if builtins.isAttrs skill then
+      (if skill ? package && skill.package != null then [ skill.package ] else [ ])
+      ++ (if skill ? packages then skill.packages else [ ])
+    else if lib.isDerivation skill || builtins.isPath skill || builtins.isString skill then
+      [ skill ]
+    else
+      [ ]
+  ) (if builtins.isList (cfg.skills or { }) then cfg.skills else builtins.attrValues enabledSkills);
+
+  skillRuntimePkgs = lib.concatMap (
+    skill: if builtins.isAttrs skill then skill.runtimePackages or [ ] else [ ]
+  ) (if builtins.isList (cfg.skills or { }) then cfg.skills else builtins.attrValues enabledSkills);
+
+  allSkillsList = skillPackages ++ (cfg.rawSkills or [ ]);
+
   # Extract passthru runtimePackages from all package derivations
   allPackagesList = cfg.packages ++ extensionPackages ++ providerPackages;
   passthruRuntimePkgs = lib.concatMap (
@@ -63,10 +87,14 @@ let
       pkg.passthru.runtimePackages
     else
       [ ]
-  ) (allPackagesList ++ cfg.rawExtensions);
+  ) (allPackagesList ++ cfg.rawExtensions ++ allSkillsList);
 
   allRuntimePackages = lib.unique (
-    cfg.runtimePackages ++ extensionRuntimePkgs ++ providerRuntimePkgs ++ passthruRuntimePkgs
+    cfg.runtimePackages
+    ++ extensionRuntimePkgs
+    ++ providerRuntimePkgs
+    ++ skillRuntimePkgs
+    ++ passthruRuntimePkgs
   );
 
   # Stringify resource paths
@@ -78,7 +106,7 @@ let
     // {
       packages = map toStringPath allPackagesList;
       extensions = map toStringPath cfg.rawExtensions;
-      skills = map toStringPath cfg.skills;
+      skills = map toStringPath allSkillsList;
       prompts = map toStringPath cfg.prompts;
       themes = map toStringPath cfg.themes;
     }

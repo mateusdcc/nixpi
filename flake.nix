@@ -36,6 +36,9 @@
           plan-mode = import ./modules/extensions/plan-mode.nix;
           pi-gpt-search = import ./modules/extensions/pi-gpt-search.nix;
         };
+        skills = {
+          commit-style = import ./modules/skills/commit-style.nix;
+        };
         providers = {
           antigravity = import ./modules/providers/antigravity.nix;
         };
@@ -110,6 +113,12 @@
           };
           antigravity = antigravityPkg;
           pi-antigravity = antigravityPkg;
+          commit-style = pkgs.callPackage ./packages/skills/commit-style {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-commit-style = pkgs.callPackage ./packages/skills/commit-style {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
         }
       );
 

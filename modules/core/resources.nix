@@ -29,10 +29,10 @@ in
       description = "List of standalone extension file paths or derivations to load.";
     };
 
-    skills = lib.mkOption {
+    rawSkills = lib.mkOption {
       type = rawResourceListType;
       default = [ ];
-      description = "List of skill directories or derivations to load.";
+      description = "List of standalone skill directory paths or derivations to load.";
     };
 
     prompts = lib.mkOption {

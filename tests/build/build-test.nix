@@ -38,7 +38,8 @@ let
       {
         programs.pi = {
           enable = true;
-          skills = [ testSkill ];
+          skills.commit-style.enable = true;
+          rawSkills = [ testSkill ];
           prompts = [ testPrompt ];
           themes = [ testTheme ];
           settings.defaultProvider = customProvider;
@@ -57,5 +58,7 @@ pkgs.runCommand "nixpi-build-test" { } ''
   test -x "${configuredPi}/bin/pi"
   test -f "${configuredPi.settingsJson}"
   test -f "${configuredPi.modelsJson}"
-  echo "Build test successfully verified configured package and settings" > "$out"
+  grep -q "commit-style" "${configuredPi.settingsJson}"
+  grep -q "test-skill" "${configuredPi.settingsJson}"
+  echo "Build test successfully verified configured package, skills, and settings" > "$out"
 ''
