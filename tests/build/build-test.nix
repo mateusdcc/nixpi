@@ -21,6 +21,17 @@ let
     };
   };
 
+  customProvider = nixpiLib.mkPiProvider {
+    name = "test-provider";
+    baseUrl = "https://test.provider.local/v1";
+    models = [
+      {
+        id = "test-model";
+        name = "Test Model";
+      }
+    ];
+  };
+
   configuredPi = nixpiLib.makePi {
     inherit pkgs;
     modules = [
@@ -30,6 +41,11 @@ let
           skills = [ testSkill ];
           prompts = [ testPrompt ];
           themes = [ testTheme ];
+          settings.defaultProvider = customProvider;
+          providers = {
+            test-provider = customProvider;
+            antigravity.enable = true;
+          };
           extensions.echo.enable = true;
           extensions.ripgrep-search.enable = true;
         };
@@ -40,5 +56,6 @@ in
 pkgs.runCommand "nixpi-build-test" { } ''
   test -x "${configuredPi}/bin/pi"
   test -f "${configuredPi.settingsJson}"
+  test -f "${configuredPi.modelsJson}"
   echo "Build test successfully verified configured package and settings" > "$out"
 ''

@@ -33,6 +33,12 @@ in
     else
       args: import ./mk-extension.nix args;
 
+  mkPiProvider =
+    if pkgs != null then
+      import ./mk-provider.nix { inherit lib pkgs; }
+    else
+      args: import ./mk-provider.nix args;
+
   mkPiSkill = mkResource.mkPiSkill or null;
   mkPiPrompt = mkResource.mkPiPrompt or null;
   mkPiTheme = mkResource.mkPiTheme or null;

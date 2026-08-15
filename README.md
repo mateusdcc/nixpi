@@ -247,40 +247,63 @@ You do not need to manually install or manage them globally.
 
 ---
 
-## Custom Providers (e.g. Antigravity)
+## Custom Providers & Antigravity
 
-`nixpi` is provider-neutral and allows registering any custom or local LLM provider without requiring `nixpi` to know provider-specific internals:
+`nixpi` models providers and models as first-class Nix objects with schema validation. Instead of passing unverified strings, `settings.defaultProvider` and `settings.defaultModel` directly accept provider and model objects (e.g. `config.programs.pi.providers.antigravity` and `config.programs.pi.providers.antigravity.models."gemini-3.7-flash"`), ensuring that providers and models are declared and exist at evaluation time.
+
+### 1. Antigravity Provider (`pi-antigravity`)
+
+`nixpi` includes native support for [`pi-antigravity`](https://github.com/Rahularya01/pi-antigravity), providing Google Cloud Code Assist / Antigravity OAuth login and streaming:
+
+```nix
+{ config, ... }:
+
+{
+  programs.pi = {
+    enable = true;
+
+    # Enable Antigravity provider
+    providers.antigravity.enable = true;
+
+    settings = {
+      # Reference the provider and model objects directly
+      defaultProvider = config.programs.pi.providers.antigravity;
+      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
+    };
+  };
+}
+```
+
+After starting Pi, run `/login antigravity` to authenticate with Google OAuth.
+
+
+### 2. Custom Providers via `mkPiProvider`
+
+Construct custom provider objects with static endpoints or package derivations using `nixpi.lib.mkPiProvider`:
 
 ```nix
 programs.pi = {
   enable = true;
 
-  settings = {
-    defaultProvider = "antigravity";
-    defaultModel = "gemini-3.7-flash";
-  };
-
-  providers.antigravity = {
-    baseUrl = "https://api.antigravity.test/v1";
-    api = "openai-completions"; # or "anthropic-messages", etc.
+  providers.ollama-local = nixpi.lib.mkPiProvider {
+    name = "ollama-local";
+    baseUrl = "http://127.0.0.1:11434/v1";
+    api = "openai-completions";
     models = [
       {
-        id = "gemini-3.7-flash";
-        name = "Antigravity 3.7 Flash";
-        reasoning = true;
-        contextWindow = 200000;
-        maxTokens = 65536;
+        id = "llama3.3";
+        name = "Llama 3.3 70B";
+        contextWindow = 131072;
       }
     ];
   };
 
-  environment.required = [
-    "ANTIGRAVITY_API_KEY"
-  ];
+  settings.defaultProvider = "ollama-local";
 };
 ```
 
 ---
+
 
 ## Secret Safety
 
@@ -373,18 +396,22 @@ in {
 ---
 
 ## Flake Outputs & Public APIs
-
-- `lib.evalPi { pkgs, modules }` - Pure module evaluator
-- `lib.makePi { pkgs, modules }` - Generates configured Pi package
-- `lib.mkPiExtension { pname, src, runtimePackages, ... }` - Extension packager
-- `lib.mkPiSkill { name, content, description }` - Skill helper
-- `lib.mkPiPrompt { name, content, argumentHint }` - Prompt helper
-- `lib.mkPiTheme { name, colors }` - Theme helper
-- `piModules.default` - Core module aggregator
-- `homeManagerModules.default` - Home Manager integration module
-- `templates.standalone`, `templates.home-manager`, `templates.devshell` - Ready-to-use templates
+ 
+ - `lib.evalPi { pkgs, modules }` - Pure module evaluator
+ - `lib.makePi { pkgs, modules }` - Generates configured Pi package
+ - `lib.mkPiProvider { name, baseUrl, ... }` - Provider constructor
+ - `lib.mkPiExtension { pname, src, runtimePackages, ... }` - Extension packager
+ - `lib.mkPiSkill { name, content, description }` - Skill helper
+ - `lib.mkPiPrompt { name, content, argumentHint }` - Prompt helper
+ - `lib.mkPiTheme { name, colors }` - Theme helper
+ - `piModules.default` - Core module aggregator
+ - `piModules.providers.antigravity` - Antigravity provider module
+ - `packages.<system>.antigravity` - Antigravity provider package
+ - `homeManagerModules.default` - Home Manager integration module
+ - `templates.standalone`, `templates.home-manager`, `templates.devshell` - Ready-to-use templates
 
 ---
+
 
 ## Testing & Verification
 

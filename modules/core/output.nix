@@ -34,8 +34,29 @@ let
     builtins.attrValues enabledExtensions
   );
 
+  # Collect packages, runtimePackages, and env vars from enabled providers
+  enabledProviders = lib.filterAttrs (n: prov: prov.enable or true) (cfg.providers or { });
+
+  providerPackages = lib.concatMap (
+    prov:
+    if prov ? package && prov.package != null then
+      [ prov.package ]
+    else if prov ? packages then
+      prov.packages
+    else
+      [ ]
+  ) (builtins.attrValues enabledProviders);
+
+  providerRuntimePkgs = lib.concatMap (prov: prov.runtimePackages or [ ]) (
+    builtins.attrValues enabledProviders
+  );
+
+  providerEnvVars = lib.foldl' lib.recursiveUpdate { } (
+    map (prov: prov.environment.variables or { }) (builtins.attrValues enabledProviders)
+  );
+
   # Extract passthru runtimePackages from all package derivations
-  allPackagesList = cfg.packages ++ extensionPackages;
+  allPackagesList = cfg.packages ++ extensionPackages ++ providerPackages;
   passthruRuntimePkgs = lib.concatMap (
     pkg:
     if lib.isDerivation pkg && pkg ? passthru && pkg.passthru ? runtimePackages then
@@ -45,7 +66,7 @@ let
   ) (allPackagesList ++ cfg.rawExtensions);
 
   allRuntimePackages = lib.unique (
-    cfg.runtimePackages ++ extensionRuntimePkgs ++ passthruRuntimePkgs
+    cfg.runtimePackages ++ extensionRuntimePkgs ++ providerRuntimePkgs ++ passthruRuntimePkgs
   );
 
   # Stringify resource paths
@@ -68,21 +89,43 @@ let
 
   settingsJson = pkgs.writeText "pi-settings.json" (builtins.toJSON cleanedSettings);
 
+  # Collect providers with static endpoint declarations for models.json
+  staticProviders =
+    lib.filterAttrs
+      (n: prov: (prov ? baseUrl && prov.baseUrl != null) || (prov ? api && prov.api != null))
+      (
+        builtins.mapAttrs (n: prov: {
+          inherit (prov)
+            baseUrl
+            api
+            apiKey
+            ;
+          models =
+            if builtins.isAttrs (prov.models or null) then
+              builtins.attrValues prov.models
+            else if builtins.isList (prov.models or null) then
+              prov.models
+            else
+              [ ];
+        }) enabledProviders
+      );
+
+  cleanedProviders = filterNulls staticProviders;
+
   modelsJson =
-    if cfg.providers != { } then
+    if cleanedProviders != { } then
       pkgs.writeText "pi-models.json" (
         builtins.toJSON {
-          providers = filterNulls cfg.providers;
+          providers = cleanedProviders;
         }
       )
     else
       null;
 
   # Build wrapper script
+  allEnvVars = cfg.environment.variables // providerEnvVars;
   envExports = lib.concatStringsSep "\n" (
-    lib.mapAttrsToList (
-      k: v: "export ${k}=${lib.escapeShellArg (toString v)}"
-    ) cfg.environment.variables
+    lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") allEnvVars
   );
 
   pathPrefix = lib.makeBinPath allRuntimePackages;
@@ -131,6 +174,16 @@ let
       unwrapped = cfg.package;
     };
   };
+
+  allAssertions = (cfg.assertions or [ ]) ++ (config.assertions or [ ]);
+  failedAssertions = builtins.filter (x: !x.assertion) allAssertions;
+  assertMessages = lib.concatStringsSep "\n" (map (x: "- " + x.message) failedAssertions);
+  checkedPackage =
+    if failedAssertions != [ ] then
+      throw "\nFailed assertions in Pi configuration:\n${assertMessages}"
+    else
+      wrappedPackage;
+
 in
 {
   options.programs.pi = {
@@ -154,7 +207,7 @@ in
   };
 
   config.programs.pi = {
-    finalPackage = wrappedPackage;
+    finalPackage = checkedPackage;
     generatedSettingsFile = settingsJson;
     generatedModelsFile = modelsJson;
     finalRuntimePackages = allRuntimePackages;

@@ -3,50 +3,59 @@
 let
   lib = pkgs.lib;
 
-  # Test 1: Full configuration evaluation
+  customProviderObj = nixpiLib.mkPiProvider {
+    name = "custom-created";
+    baseUrl = "https://custom.provider.test";
+    models = [
+      {
+        id = "custom-model-1";
+        name = "Custom Model 1";
+      }
+    ];
+  };
+
+  # Test 1: Full configuration evaluation with object references
   testEval = nixpiLib.evalPi {
     inherit pkgs;
     modules = [
-      {
-        programs.pi = {
-          enable = true;
-          settings = {
-            defaultProvider = "custom-antigravity";
-            defaultModel = "gemini-3.7-flash";
-            defaultThinkingLevel = "high";
-            theme = "dark";
-          };
-          providers.custom-antigravity = {
-            baseUrl = "https://api.antigravity.test/v1";
-            api = "openai-completions";
-            models = [
-              {
-                id = "gemini-3.7-flash";
-                name = "Antigravity Flash";
-                reasoning = true;
-              }
-            ];
-          };
-          extensions = {
-            echo.enable = true;
-            ripgrep-search.enable = true;
-            plan-mode = {
-              enable = true;
-              mode = "thorough";
-              maxSteps = 25;
-              autoApprove = true;
+      (
+        { config, ... }:
+        {
+          programs.pi = {
+            enable = true;
+            providers = {
+              antigravity.enable = true;
+              custom-created = customProviderObj;
+            };
+            settings = {
+              # Pass provider object directly
+              defaultProvider = config.programs.pi.providers.antigravity;
+              # Pass model object directly
+              defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
+              defaultThinkingLevel = "high";
+              theme = "dark";
+            };
+            extensions = {
+              echo.enable = true;
+              ripgrep-search.enable = true;
+              plan-mode = {
+                enable = true;
+                mode = "thorough";
+                maxSteps = 25;
+                autoApprove = true;
+              };
+            };
+            environment = {
+              variables = {
+                PI_TEST_VAR = "hello-nixpi";
+              };
+              required = [
+                "CUSTOM_API_KEY"
+              ];
             };
           };
-          environment = {
-            variables = {
-              PI_TEST_VAR = "hello-nixpi";
-            };
-            required = [
-              "CUSTOM_API_KEY"
-            ];
-          };
-        };
-      }
+        }
+      )
     ];
   };
 
@@ -56,9 +65,23 @@ let
   hasRipgrep = lib.any (p: p.pname or p.name == "ripgrep") cfg.finalRuntimePackages;
   hasEchoPkg = lib.length cfg.finalRuntimePackages >= 1;
   hasPlanModeSetting = cfg.settings.planMode.mode == "thorough";
-  hasProvider = cfg.providers.custom-antigravity.baseUrl == "https://api.antigravity.test/v1";
+  hasAntigravityProvider = cfg.providers.antigravity.package != null;
+  hasCustomProvider = cfg.providers.custom-created.baseUrl == "https://custom.provider.test";
+  hasCorrectDefaultProvider = cfg.settings.defaultProvider == "antigravity";
+  hasCorrectDefaultModel = cfg.settings.defaultModel == "gemini-3.7-flash";
 
-  allChecksPass = hasRipgrep && hasEchoPkg && hasPlanModeSetting && hasProvider;
+  # Check that built-in providers are pre-populated on the providers object
+  hasOpenAIProvider = cfg.providers ? openai && cfg.providers.openai.models ? "gpt-4o";
+
+  allChecksPass =
+    hasRipgrep
+    && hasEchoPkg
+    && hasPlanModeSetting
+    && hasAntigravityProvider
+    && hasCustomProvider
+    && hasCorrectDefaultProvider
+    && hasCorrectDefaultModel
+    && hasOpenAIProvider;
 in
 pkgs.runCommand "nixpi-eval-test" { } ''
   ${lib.optionalString (!allChecksPass) "echo 'Eval assertion failed' >&2; exit 1"}

@@ -36,6 +36,9 @@
           plan-mode = import ./modules/extensions/plan-mode.nix;
           pi-gpt-search = import ./modules/extensions/pi-gpt-search.nix;
         };
+        providers = {
+          antigravity = import ./modules/providers/antigravity.nix;
+        };
       };
 
       homeManagerModules = {
@@ -67,23 +70,32 @@
             inherit pkgs;
           };
           mkExt = nixpiLib.mkPiExtension;
+          antigravityPkg = pkgs.callPackage ./packages/providers/antigravity {
+            mkPiExtension = mkExt;
+          };
         in
         {
           default = nixpiLib.makePi {
             inherit pkgs;
             modules = [
-              {
-                programs.pi = {
-                  enable = true;
-                  settings = {
-                    theme = "dark";
+              (
+                { config, ... }:
+                {
+                  programs.pi = {
+                    enable = true;
+                    providers.antigravity.enable = true;
+                    settings = {
+                      defaultProvider = config.programs.pi.providers.antigravity;
+                      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
+                      theme = "dark";
+                    };
+                    extensions = {
+                      echo.enable = true;
+                      ripgrep-search.enable = true;
+                    };
                   };
-                  extensions = {
-                    echo.enable = true;
-                    ripgrep-search.enable = true;
-                  };
-                };
-              }
+                }
+              )
             ];
           };
 
@@ -96,6 +108,8 @@
           pi-gpt-search = pkgs.callPackage ./packages/extensions/pi-gpt-search {
             mkPiExtension = mkExt;
           };
+          antigravity = antigravityPkg;
+          pi-antigravity = antigravityPkg;
         }
       );
 

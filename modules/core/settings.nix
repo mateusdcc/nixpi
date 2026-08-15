@@ -1,6 +1,35 @@
-{ lib, ... }:
+{ config, lib, ... }:
 
 let
+  extractProviderName =
+    p:
+    if builtins.isString p then
+      p
+    else if builtins.isAttrs p then
+      p.name or p.id or p.passthru.providerName or p.passthru.name or p.pname
+        or (throw "Invalid provider object: missing name or id")
+    else
+      throw "Invalid defaultProvider value: expected string or provider object";
+
+  extractModelId =
+    m:
+    if builtins.isString m then
+      m
+    else if builtins.isAttrs m then
+      m.id or m.name or m.passthru.modelId or (throw "Invalid model object: missing id or name")
+    else
+      throw "Invalid defaultModel value: expected string or model object";
+
+  defaultProviderType = lib.types.coercedTo (lib.types.oneOf [
+    lib.types.str
+    lib.types.attrs
+  ]) extractProviderName (lib.types.nullOr lib.types.str);
+
+  defaultModelType = lib.types.coercedTo (lib.types.oneOf [
+    lib.types.str
+    lib.types.attrs
+  ]) extractModelId (lib.types.nullOr lib.types.str);
+
   compactionType = lib.types.submodule {
     options = {
       enabled = lib.mkOption {
@@ -65,7 +94,13 @@ let
       };
     };
   };
+
+  cfg = config.programs.pi;
+  availableProviders = lib.unique (
+    (cfg.builtinProviders or [ ]) ++ (builtins.attrNames (cfg.providers or { }))
+  );
 in
+
 {
   options.programs.pi.settings = lib.mkOption {
     type = lib.types.submodule {
@@ -73,15 +108,15 @@ in
 
       options = {
         defaultProvider = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
+          type = defaultProviderType;
           default = null;
-          description = "Default LLM provider to use.";
+          description = "Default LLM provider to use (string name or provider object).";
         };
 
         defaultModel = lib.mkOption {
-          type = lib.types.nullOr lib.types.str;
+          type = defaultModelType;
           default = null;
-          description = "Default model ID to use.";
+          description = "Default model ID to use (string ID or model object).";
         };
 
         defaultThinkingLevel = lib.mkOption {
@@ -145,5 +180,14 @@ in
     };
     default = { };
     description = "Pi settings configuration (generated as settings.json).";
+  };
+
+  config = lib.mkIf (cfg.settings.defaultProvider != null) {
+    programs.pi.assertions = [
+      {
+        assertion = builtins.elem cfg.settings.defaultProvider availableProviders;
+        message = "nixpi: programs.pi.settings.defaultProvider '${toString cfg.settings.defaultProvider}' is not a recognized built-in provider or declared custom provider. Available providers: ${lib.concatStringsSep ", " availableProviders}";
+      }
+    ];
   };
 }
