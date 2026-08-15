@@ -39,6 +39,9 @@
                     echo.enable = true;
                     ripgrep-search.enable = true;
                   };
+                  skills = {
+                    commit-style.enable = true;
+                  };
                   runtimePackages = with pkgs; [
                     git
                     jq

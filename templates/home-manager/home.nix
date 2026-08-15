@@ -25,6 +25,10 @@
       };
     };
 
+    skills = {
+      commit-style.enable = true;
+    };
+
     runtimePackages = with pkgs; [
       git
       ripgrep
