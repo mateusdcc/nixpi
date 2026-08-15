@@ -1,0 +1,50 @@
+{ lib, pkgs, ... }:
+
+let
+  rawResourceListType = lib.types.listOf (
+    lib.types.oneOf [
+      lib.types.package
+      lib.types.path
+      lib.types.str
+    ]
+  );
+in
+{
+  options.programs.pi = {
+    runtimePackages = lib.mkOption {
+      type = lib.types.listOf lib.types.package;
+      default = [ ];
+      description = "List of CLI packages to make available in PATH for Pi and its extensions.";
+    };
+
+    packages = lib.mkOption {
+      type = rawResourceListType;
+      default = [ ];
+      description = "List of Pi packages (derivations or directory paths) to load.";
+    };
+
+    rawExtensions = lib.mkOption {
+      type = rawResourceListType;
+      default = [ ];
+      description = "List of standalone extension file paths or derivations to load.";
+    };
+
+    skills = lib.mkOption {
+      type = rawResourceListType;
+      default = [ ];
+      description = "List of skill directories or derivations to load.";
+    };
+
+    prompts = lib.mkOption {
+      type = rawResourceListType;
+      default = [ ];
+      description = "List of prompt template files or derivations to load.";
+    };
+
+    themes = lib.mkOption {
+      type = rawResourceListType;
+      default = [ ];
+      description = "List of theme JSON files or derivations to load.";
+    };
+  };
+}
