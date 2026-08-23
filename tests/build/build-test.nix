@@ -49,6 +49,7 @@ let
           };
           extensions.echo.enable = true;
           extensions.ripgrep-search.enable = true;
+          extensions.obsidian.enable = true;
         };
       }
     ];

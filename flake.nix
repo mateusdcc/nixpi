@@ -35,6 +35,7 @@
           ripgrep-search = import ./modules/extensions/ripgrep-search.nix;
           plan-mode = import ./modules/extensions/plan-mode.nix;
           pi-gpt-search = import ./modules/extensions/pi-gpt-search.nix;
+          obsidian = import ./modules/extensions/obsidian.nix;
         };
         skills = {
           commit-style = import ./modules/skills/commit-style.nix;
@@ -112,6 +113,9 @@
           };
           plan-mode = pkgs.callPackage ./packages/extensions/plan-mode { mkPiExtension = mkExt; };
           pi-gpt-search = pkgs.callPackage ./packages/extensions/pi-gpt-search {
+            mkPiExtension = mkExt;
+          };
+          obsidian = pkgs.callPackage ./packages/extensions/obsidian {
             mkPiExtension = mkExt;
           };
           antigravity = antigravityPkg;

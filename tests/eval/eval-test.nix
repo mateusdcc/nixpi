@@ -44,6 +44,11 @@ let
                 maxSteps = 25;
                 autoApprove = true;
               };
+              obsidian = {
+                enable = true;
+                vaultPath = "/path/to/my-vault";
+                apiUrl = "https://127.0.0.1:27124";
+              };
             };
             skills = {
               commit-style.enable = true;
@@ -67,8 +72,10 @@ let
   # Assertions
   hasRipgrep = lib.any (p: p.pname or p.name == "ripgrep") cfg.finalRuntimePackages;
   hasGit = lib.any (p: p.pname or p.name == "git") cfg.finalRuntimePackages;
+  hasCurl = lib.any (p: p.pname or p.name == "curl") cfg.finalRuntimePackages;
   hasEchoPkg = lib.length cfg.finalRuntimePackages >= 1;
   hasPlanModeSetting = cfg.settings.planMode.mode == "thorough";
+  hasObsidianEnv = cfg.environment.variables.OBSIDIAN_VAULT_PATH == "/path/to/my-vault";
   hasAntigravityProvider = cfg.providers.antigravity.package != null;
   hasCustomProvider = cfg.providers.custom-created.baseUrl == "https://custom.provider.test";
   hasCorrectDefaultProvider = cfg.settings.defaultProvider == "antigravity";
@@ -81,8 +88,10 @@ let
   allChecksPass =
     hasRipgrep
     && hasGit
+    && hasCurl
     && hasEchoPkg
     && hasPlanModeSetting
+    && hasObsidianEnv
     && hasAntigravityProvider
     && hasCustomProvider
     && hasCorrectDefaultProvider
