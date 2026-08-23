@@ -226,6 +226,13 @@ programs.pi.extensions = {
   };
 
   ripgrep-search.enable = true;
+
+  # Obsidian integration for vault control, link analysis, and plugins
+  obsidian = {
+    enable = true;
+    vaultPath = "~/Documents/Obsidian/MainVault";
+    apiUrl = "https://127.0.0.1:27124";
+  };
 };
 ```
 
