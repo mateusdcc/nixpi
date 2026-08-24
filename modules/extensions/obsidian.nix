@@ -75,16 +75,15 @@ in
 
     programs.pi.rawSkills = lib.optional (vaultInstructionSkill != null) vaultInstructionSkill;
 
-    programs.pi.environment.variables =
-      {
-        OBSIDIAN_REST_API_URL = cfg.apiUrl;
-      }
-      // lib.optionalAttrs (effectiveVault != null) {
-        OBSIDIAN_DEFAULT_VAULT = effectiveVault;
-        OBSIDIAN_VAULT_PATH = effectiveVault;
-      }
-      // lib.optionalAttrs (cfg.apiKey != null) {
-        OBSIDIAN_API_KEY = cfg.apiKey;
-      };
+    programs.pi.environment.variables = {
+      OBSIDIAN_REST_API_URL = cfg.apiUrl;
+    }
+    // lib.optionalAttrs (effectiveVault != null) {
+      OBSIDIAN_DEFAULT_VAULT = effectiveVault;
+      OBSIDIAN_VAULT_PATH = effectiveVault;
+    }
+    // lib.optionalAttrs (cfg.apiKey != null) {
+      OBSIDIAN_API_KEY = cfg.apiKey;
+    };
   };
 }

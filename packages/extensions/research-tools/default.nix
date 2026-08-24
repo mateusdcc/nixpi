@@ -8,12 +8,10 @@
 }:
 
 let
-  pyEnv = python3.withPackages (
-    ps: [
-      ps.duckdb
-      ps.youtube-transcript-api
-    ]
-  );
+  pyEnv = python3.withPackages (ps: [
+    ps.duckdb
+    ps.youtube-transcript-api
+  ]);
 in
 mkPiExtension {
   pname = "research-tools";
