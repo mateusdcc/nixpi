@@ -5,7 +5,7 @@ export function findVaultPath(explicitPath) {
   if (explicitPath && fs.existsSync(explicitPath)) {
     return path.resolve(explicitPath);
   }
-  const envVault = process.env.OBSIDIAN_VAULT_PATH || process.env.OBSIDIAN_VAULT;
+  const envVault = process.env.OBSIDIAN_DEFAULT_VAULT || process.env.OBSIDIAN_VAULT_PATH || process.env.OBSIDIAN_VAULT;
   if (envVault && fs.existsSync(envVault)) {
     return path.resolve(envVault);
   }

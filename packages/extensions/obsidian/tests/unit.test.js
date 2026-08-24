@@ -113,6 +113,15 @@ Tags: #project/nix #obsidian-dev.
     const layoutRes = await getObsidianLayout({ url: "http://127.0.0.1:9999" }, tmpVault);
     assert.ok(layoutRes.success);
     assert.equal(layoutRes.layout.main.type, "split");
+
+    // 8. Test instruction generation and injection
+    const { getVaultInstructionMarkdown, injectVaultInstructions } = await import("../extensions/instructions.js");
+    const mdContent = getVaultInstructionMarkdown(tmpVault);
+    assert.ok(mdContent.includes(tmpVault));
+    assert.ok(mdContent.includes("NEVER ask the user which vault to use"));
+    const injected = injectVaultInstructions({}, tmpVault);
+    assert.ok(injected);
+    assert.ok(fs.existsSync(path.join(tmpVault, ".pi", "obsidian-default-vault.md")));
   } finally {
     await fs.promises.rm(tmpVault, { recursive: true, force: true });
   }

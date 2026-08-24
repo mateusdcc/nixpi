@@ -230,8 +230,8 @@ programs.pi.extensions = {
   # Obsidian integration for vault control, link analysis, and plugins
   obsidian = {
     enable = true;
-    vaultPath = "~/Documents/Obsidian/MainVault";
-    apiUrl = "https://127.0.0.1:27124";
+    defaultVault = "~/Documents/Obsidian/MainVault";
+    apiUrl = "http://127.0.0.1:27125";
   };
 };
 ```
