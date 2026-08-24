@@ -6,9 +6,10 @@ import {
   runObsidianCommand,
   openObsidianSettings,
 } from "./client.js";
-import { readSettings, updateSettings, listAllSettings } from "./settings.js";
+import { readSettings, updateSettings } from "./settings.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
 import { installPluginFromGitHub } from "./installer.js";
+import { ensureCompanionPlugin } from "./bridge.js";
 
 function respond(data) {
   const text = typeof data === "string" ? data : JSON.stringify(data, null, 2);
@@ -17,6 +18,21 @@ function respond(data) {
 
 export function registerObsidianTools(pi) {
   if (!pi || !pi.registerTool) return;
+
+  pi.registerTool({
+    name: "obsidian_setup_bridge",
+    label: "Obsidian Setup Bridge",
+    description: "Install and enable the Pi Bridge companion plugin in the Obsidian vault",
+    parameters: {
+      type: "object",
+      properties: { vault: { type: "string", description: "Vault path override" } },
+    },
+    async execute(id, params) {
+      const vaultDir = findVaultPath(params?.vault);
+      const res = await ensureCompanionPlugin(vaultDir);
+      return respond(res);
+    },
+  });
 
   pi.registerTool({
     name: "obsidian_open_note",
@@ -31,7 +47,8 @@ export function registerObsidianTools(pi) {
       required: ["file"],
     },
     async execute(id, params) {
-      const res = await openNoteInApp(params.file, params.vault);
+      const vaultDir = findVaultPath(params?.vault);
+      const res = await openNoteInApp(params.file, vaultDir);
       return respond(res);
     },
   });
@@ -99,11 +116,11 @@ export function registerObsidianTools(pi) {
   pi.registerTool({
     name: "obsidian_get_settings",
     label: "Obsidian Get Settings",
-    description: "Read Obsidian vault settings (app, appearance, community-plugins, core-plugins, or plugin:<id>)",
+    description: "Read Obsidian vault settings (app, appearance, community-plugins, or plugin:<id>)",
     parameters: {
       type: "object",
       properties: {
-        config_type: { type: "string", default: "app", description: "Config type or plugin ID (e.g. 'app', 'appearance', 'plugin:dataview')" },
+        config_type: { type: "string", default: "app", description: "Config type or plugin ID" },
         vault: { type: "string", description: "Vault path override" },
       },
     },
@@ -117,12 +134,12 @@ export function registerObsidianTools(pi) {
   pi.registerTool({
     name: "obsidian_change_settings",
     label: "Obsidian Change Settings",
-    description: "Update or merge settings in Obsidian config files (app, appearance, community-plugins, or plugin:<id>)",
+    description: "Update or merge settings in Obsidian config files",
     parameters: {
       type: "object",
       properties: {
-        config_type: { type: "string", description: "Config type (e.g. 'app', 'appearance', 'plugin:dataview')" },
-        updates: { type: "object", description: "Key-value pairs or array of items to update/merge" },
+        config_type: { type: "string", description: "Config type (e.g. 'app', 'appearance')" },
+        updates: { type: "object", description: "Key-value pairs or array to update/merge" },
         vault: { type: "string", description: "Vault path override" },
       },
       required: ["config_type", "updates"],
@@ -141,7 +158,7 @@ export function registerObsidianTools(pi) {
     parameters: {
       type: "object",
       properties: {
-        github_url: { type: "string", description: "GitHub URL or owner/repo (e.g. 'https://github.com/blacksmithgu/obsidian-dataview')" },
+        github_url: { type: "string", description: "GitHub URL or owner/repo" },
         vault: { type: "string", description: "Vault path override" },
       },
       required: ["github_url"],
@@ -156,7 +173,7 @@ export function registerObsidianTools(pi) {
   pi.registerTool({
     name: "obsidian_note_links",
     label: "Obsidian Note Links",
-    description: "Inspect all outgoing links, wikilinks, embeds, tags, and incoming backlinks for a note",
+    description: "Inspect outgoing links, wikilinks, embeds, tags, and backlinks for a note",
     parameters: {
       type: "object",
       properties: {
@@ -175,12 +192,10 @@ export function registerObsidianTools(pi) {
   pi.registerTool({
     name: "obsidian_all_links",
     label: "Obsidian All Links",
-    description: "Scan the entire Obsidian vault and build the complete link graph, broken links, orphan notes, and stats",
+    description: "Scan the entire Obsidian vault and build the complete link graph and stats",
     parameters: {
       type: "object",
-      properties: {
-        vault: { type: "string", description: "Vault path override" },
-      },
+      properties: { vault: { type: "string", description: "Vault path override" } },
     },
     async execute(id, params) {
       const vaultDir = findVaultPath(params?.vault);

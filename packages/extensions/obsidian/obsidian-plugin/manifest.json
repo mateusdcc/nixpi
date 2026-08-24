@@ -1,0 +1,10 @@
+{
+  "id": "pi-bridge",
+  "name": "Pi Bridge",
+  "version": "0.1.0",
+  "minAppVersion": "0.15.0",
+  "description": "Companion bridge for the Pi Coding Agent to execute commands, split panes, and control Obsidian",
+  "author": "mateusdcc",
+  "authorUrl": "https://github.com/mateusdcc/nixpi",
+  "isDesktopOnly": true
+}

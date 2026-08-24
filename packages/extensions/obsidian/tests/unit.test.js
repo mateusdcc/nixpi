@@ -97,9 +97,24 @@ Tags: #project/nix #obsidian-dev.
     const pluginData = await updateSettings(tmpVault, "plugin:dataview", { enableSql: true });
     assert.ok(pluginData.success);
     assert.equal(pluginData.updatedData.enableSql, true);
+
+    // 6. Test Companion Plugin deployment
+    const { ensureCompanionPlugin } = await import("../extensions/bridge.js");
+    const bridgeDeploy = await ensureCompanionPlugin(tmpVault);
+    assert.ok(bridgeDeploy.success);
+    assert.ok(fs.existsSync(path.join(tmpVault, ".obsidian", "plugins", "pi-bridge", "manifest.json")));
+    assert.ok(fs.existsSync(path.join(tmpVault, ".obsidian", "plugins", "pi-bridge", "main.js")));
+    const pluginsJson = await readSettings(tmpVault, "community-plugins");
+    assert.ok(pluginsJson.data.includes("pi-bridge"));
   } finally {
     await fs.promises.rm(tmpVault, { recursive: true, force: true });
   }
+
+  // 7. Test URI resolution with path directory
+  const { openViaObsidianUri } = await import("../extensions/client.js");
+  const uriRes = await openViaObsidianUri("Concepts/LegalGraphRAG.md", "/Users/mateusdcc/Projects/my-real-tho");
+  assert.ok(uriRes.uri.includes("vault=my-real-tho"));
+  assert.ok(uriRes.uri.includes("file=Concepts%2FLegalGraphRAG.md"));
 
   // 6. GitHub URL parser tests
   const gh1 = parseGitHubRepo("https://github.com/blacksmithgu/obsidian-dataview");

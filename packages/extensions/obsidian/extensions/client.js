@@ -1,9 +1,10 @@
 import https from "node:https";
 import http from "node:http";
+import path from "node:path";
 import { exec } from "node:child_process";
 
 export function getClientConfig(overrideUrl, overrideKey) {
-  const url = overrideUrl || process.env.OBSIDIAN_REST_API_URL || "https://127.0.0.1:27124";
+  const url = overrideUrl || process.env.OBSIDIAN_REST_API_URL || "http://127.0.0.1:27125";
   const apiKey = overrideKey || process.env.OBSIDIAN_API_KEY || process.env.OBSIDIAN_REST_API_KEY || "";
   return { url: url.replace(/\/+$/, ""), apiKey };
 }
@@ -34,28 +35,43 @@ export function executeHttpRequest(targetUrl, options = {}) {
   });
 }
 
-export async function openNoteInApp(filePath, vaultName, clientConfig = {}) {
+export async function openNoteInApp(filePath, vaultPathOrName, clientConfig = {}) {
   const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const resBridge = await executeHttpRequest(`${url}/open`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: { file: filePath },
+    });
+    if (resBridge.status >= 200 && resBridge.status < 300) return { success: true, method: "bridge" };
+  } catch {}
+
   try {
     const encoded = encodeURIComponent(filePath);
     const res = await executeHttpRequest(`${url}/open/${encoded}`, {
       method: "POST",
       headers: buildHeaders(apiKey),
     });
-    if (res.status >= 200 && res.status < 300) {
-      return { success: true, method: "rest-api" };
-    }
-  } catch {
-    // Fall back to system URI
-  }
-  return openViaObsidianUri(filePath, vaultName);
+    if (res.status >= 200 && res.status < 300) return { success: true, method: "rest-api" };
+  } catch {}
+
+  return openViaObsidianUri(filePath, vaultPathOrName);
 }
 
-export function openViaObsidianUri(filePath, vaultName) {
+export function openViaObsidianUri(filePath, vaultPathOrName) {
   return new Promise((resolve) => {
     const params = new URLSearchParams();
-    if (vaultName) params.append("vault", vaultName);
-    params.append("file", filePath);
+    if (path.isAbsolute(filePath)) {
+      params.append("path", filePath);
+    } else {
+      if (vaultPathOrName) {
+        const cleanVault = vaultPathOrName.includes("/") || vaultPathOrName.includes("\\")
+          ? path.basename(path.resolve(vaultPathOrName))
+          : vaultPathOrName;
+        params.append("vault", cleanVault);
+      }
+      params.append("file", filePath);
+    }
     const uri = `obsidian://open?${params.toString()}`;
     const cmd = process.platform === "darwin" ? `open "${uri}"` : `xdg-open "${uri}"`;
     exec(cmd, (err) => {
@@ -67,7 +83,7 @@ export function openViaObsidianUri(filePath, vaultName) {
 export async function listObsidianCommands(clientConfig = {}) {
   const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
   try {
-    const res = await executeHttpRequest(`${url}/commands/`, {
+    const res = await executeHttpRequest(`${url}/commands`, {
       method: "GET",
       headers: buildHeaders(apiKey),
     });
@@ -75,30 +91,53 @@ export async function listObsidianCommands(clientConfig = {}) {
       const parsed = JSON.parse(res.data);
       return { success: true, commands: parsed.commands || parsed };
     }
-    return { success: false, error: `HTTP ${res.status}: ${res.data}` };
-  } catch (err) {
-    return { success: false, error: err.message, fallbackCommands: getCoreFallbackCommands() };
-  }
+  } catch {}
+  return { success: false, fallbackCommands: getCoreFallbackCommands() };
 }
 
 export async function runObsidianCommand(commandId, clientConfig = {}) {
   const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
-  const encodedId = encodeURIComponent(commandId);
-  const res = await executeHttpRequest(`${url}/commands/${encodedId}/`, {
-    method: "POST",
-    headers: buildHeaders(apiKey),
-  });
-  const success = res.status >= 200 && res.status < 300;
-  return { success, status: res.status, output: res.data };
+  try {
+    const encodedId = encodeURIComponent(commandId);
+    const res = await executeHttpRequest(`${url}/commands/${encodedId}`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: { command_id: commandId },
+    });
+    if (res.status >= 200 && res.status < 300) {
+      return { success: true, status: res.status, output: res.data };
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: false, error: "Command execution failed" };
 }
 
-export function splitObsidianScreen(direction = "vertical", clientConfig = {}) {
+export async function splitObsidianScreen(direction = "vertical", clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/split`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: { direction },
+    });
+    if (res.status >= 200 && res.status < 300) return { success: true, method: "bridge", direction };
+  } catch {}
+
   const isHoriz = direction.toLowerCase().startsWith("h") || direction.toLowerCase() === "down";
   const cmd = isHoriz ? "workspace:split-horizontal" : "workspace:split-vertical";
   return runObsidianCommand(cmd, clientConfig);
 }
 
-export function openObsidianSettings(clientConfig = {}) {
+export async function openObsidianSettings(clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/settings`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+    });
+    if (res.status >= 200 && res.status < 300) return { success: true, method: "bridge" };
+  } catch {}
   return runObsidianCommand("app:open-settings", clientConfig);
 }
 
@@ -113,6 +152,6 @@ export function getCoreFallbackCommands() {
     { id: "workspace:toggle-right-sidebar", name: "Toggle right sidebar" },
     { id: "editor:toggle-source", name: "Toggle Live Preview / Source mode" },
     { id: "file-explorer:open", name: "Open file explorer" },
-    { id: "graph:open", name: "Open graph view" }
+    { id: "graph:open", name: "Open graph view" },
   ];
 }

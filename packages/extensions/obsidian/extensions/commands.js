@@ -8,16 +8,27 @@ import {
 } from "./client.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
 import { installPluginFromGitHub } from "./installer.js";
+import { ensureCompanionPlugin } from "./bridge.js";
 
 export function registerObsidianCommands(pi) {
   if (!pi || !pi.registerCommand) return;
+
+  pi.registerCommand("obsidian-bridge", {
+    description: "Install Pi Bridge plugin in vault: /obsidian-bridge",
+    handler: async () => {
+      const vaultDir = findVaultPath();
+      const res = await ensureCompanionPlugin(vaultDir);
+      console.log(JSON.stringify(res, null, 2));
+    },
+  });
 
   pi.registerCommand("obsidian-open", {
     description: "Open a note in Obsidian UI: /obsidian-open <file>",
     handler: async (args) => {
       const file = args?.trim();
       if (!file) return console.log("Usage: /obsidian-open <note-path>");
-      const res = await openNoteInApp(file);
+      const vaultDir = findVaultPath();
+      const res = await openNoteInApp(file, vaultDir);
       console.log(JSON.stringify(res, null, 2));
     },
   });
