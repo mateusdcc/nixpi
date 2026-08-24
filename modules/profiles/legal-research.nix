@@ -7,6 +7,10 @@
 let
   promptPkg = pkgs.callPackage ../../packages/prompts/research-lawyer-opportunities { };
   ledgerPkg = pkgs.callPackage ../../packages/evidence-ledger { };
+  pyEnv = pkgs.python3.withPackages (ps: [
+    ps.duckdb
+    ps.youtube-transcript-api
+  ]);
 in
 {
   programs.pi = {
@@ -39,7 +43,7 @@ in
 
     runtimePackages = with pkgs; [
       duckdb
-      python3
+      pyEnv
       nodejs
       curl
       jq
