@@ -14,6 +14,7 @@
     ./extensions/pi-gpt-search.nix
     ./extensions/obsidian.nix
     ./skills/commit-style.nix
+    ./skills/obsidian-screenshot.nix
     ./providers/antigravity.nix
   ];
 }
