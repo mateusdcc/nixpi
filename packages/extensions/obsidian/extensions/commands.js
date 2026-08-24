@@ -5,6 +5,7 @@ import {
   listObsidianCommands,
   runObsidianCommand,
   openObsidianSettings,
+  getObsidianLayout,
 } from "./client.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
 import { installPluginFromGitHub } from "./installer.js";
@@ -12,6 +13,15 @@ import { ensureCompanionPlugin } from "./bridge.js";
 
 export function registerObsidianCommands(pi) {
   if (!pi || !pi.registerCommand) return;
+
+  pi.registerCommand("obsidian-layout", {
+    description: "Get current Obsidian workspace layout: /obsidian-layout",
+    handler: async () => {
+      const vaultDir = findVaultPath();
+      const res = await getObsidianLayout({}, vaultDir);
+      console.log(JSON.stringify(res, null, 2));
+    },
+  });
 
   pi.registerCommand("obsidian-bridge", {
     description: "Install Pi Bridge plugin in vault: /obsidian-bridge",

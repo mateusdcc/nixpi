@@ -23,11 +23,9 @@ module.exports = class PiBridgePlugin extends Plugin {
       }
       this.handleRequest(req, res);
     });
-
     this.server.on("error", (err) => {
       console.error("[Pi Bridge] Server error:", err.message);
     });
-
     this.server.listen(this.port, "127.0.0.1", () => {
       console.log(`[Pi Bridge] Server listening on http://127.0.0.1:${this.port}`);
     });
@@ -59,6 +57,7 @@ module.exports = class PiBridgePlugin extends Plugin {
 
   async route(method, pathname, body, params) {
     if (pathname === "/" || pathname === "/status") return this.handleStatus();
+    if (pathname === "/layout" || pathname === "/workspace/layout") return this.handleLayout();
     if (pathname === "/open") return this.handleOpen(body, params);
     if (pathname === "/split") return this.handleSplit(body, params);
     if (pathname === "/commands") return this.handleListCommands();
@@ -75,6 +74,42 @@ module.exports = class PiBridgePlugin extends Plugin {
   handleStatus() {
     const cmdCount = Object.keys(this.app.commands.commands || {}).length;
     return { status: "ok", vault: this.app.vault.getName(), commandsCount: cmdCount };
+  }
+
+  handleLayout() {
+    const layout = this.app.workspace.getLayout();
+    const activeFile = this.app.workspace.getActiveFile()?.path || null;
+    const summary = this.summarizeLayout(layout, activeFile);
+    return { success: true, activeFile, summary, layout };
+  }
+
+  summarizeLayout(layout, activeFile) {
+    const mainPanes = [];
+    this.extractLeaves(layout.main, mainPanes, layout.active);
+    return {
+      activeFile,
+      activeLeafId: layout.active,
+      leftSidebarCollapsed: layout.left?.collapsed ?? true,
+      rightSidebarCollapsed: layout.right?.collapsed ?? true,
+      panesCount: mainPanes.length,
+      panes: mainPanes,
+    };
+  }
+
+  extractLeaves(node, list, activeId) {
+    if (!node) return;
+    if (node.type === "leaf") {
+      list.push({
+        id: node.id,
+        type: node.state?.type || "unknown",
+        file: node.state?.state?.file || null,
+        title: node.state?.title || null,
+        isActive: node.id === activeId,
+      });
+    }
+    if (node.children) {
+      for (const child of node.children) this.extractLeaves(child, list, activeId);
+    }
   }
 
   async handleOpen(body, params) {

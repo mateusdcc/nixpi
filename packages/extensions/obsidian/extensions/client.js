@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import https from "node:https";
 import http from "node:http";
 import path from "node:path";
@@ -33,6 +34,31 @@ export function executeHttpRequest(targetUrl, options = {}) {
     if (options.body) req.write(typeof options.body === "string" ? options.body : JSON.stringify(options.body));
     req.end();
   });
+}
+
+export async function getObsidianLayout(clientConfig = {}, vaultDir = null) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/layout`, {
+      method: "GET",
+      headers: buildHeaders(apiKey),
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+  } catch {}
+
+  if (vaultDir) {
+    const wsFile = path.join(vaultDir, ".obsidian", "workspace.json");
+    if (fs.existsSync(wsFile)) {
+      try {
+        const raw = await fs.promises.readFile(wsFile, "utf-8");
+        const layout = JSON.parse(raw);
+        return { success: true, method: "workspace.json", layout };
+      } catch {}
+    }
+  }
+  return { success: false, error: "Unable to retrieve Obsidian workspace layout" };
 }
 
 export async function openNoteInApp(filePath, vaultPathOrName, clientConfig = {}) {
@@ -148,8 +174,8 @@ export function getCoreFallbackCommands() {
     { id: "workspace:split-vertical", name: "Split right" },
     { id: "workspace:split-horizontal", name: "Split down" },
     { id: "workspace:close", name: "Close active pane" },
-    { id: "workspace:toggle-left-sidebar", name: "Toggle left sidebar" },
-    { id: "workspace:toggle-right-sidebar", name: "Toggle right sidebar" },
+    { id: "app:toggle-left-sidebar", name: "Toggle left sidebar" },
+    { id: "app:toggle-right-sidebar", name: "Toggle right sidebar" },
     { id: "editor:toggle-source", name: "Toggle Live Preview / Source mode" },
     { id: "file-explorer:open", name: "Open file explorer" },
     { id: "graph:open", name: "Open graph view" },

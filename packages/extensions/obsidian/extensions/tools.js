@@ -5,6 +5,7 @@ import {
   listObsidianCommands,
   runObsidianCommand,
   openObsidianSettings,
+  getObsidianLayout,
 } from "./client.js";
 import { readSettings, updateSettings } from "./settings.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
@@ -18,6 +19,21 @@ function respond(data) {
 
 export function registerObsidianTools(pi) {
   if (!pi || !pi.registerTool) return;
+
+  pi.registerTool({
+    name: "obsidian_get_layout",
+    label: "Obsidian Get Layout",
+    description: "Get the current workspace layout of Obsidian (open panes, active note, splits, tabs, sidebars)",
+    parameters: {
+      type: "object",
+      properties: { vault: { type: "string", description: "Vault path override" } },
+    },
+    async execute(id, params) {
+      const vaultDir = findVaultPath(params?.vault);
+      const res = await getObsidianLayout({}, vaultDir);
+      return respond(res);
+    },
+  });
 
   pi.registerTool({
     name: "obsidian_setup_bridge",
@@ -56,7 +72,7 @@ export function registerObsidianTools(pi) {
   pi.registerTool({
     name: "obsidian_split_screen",
     label: "Obsidian Split Screen",
-    description: "Split the active Obsidian editor pane vertically or horizontally",
+    description: "Split active editor pane vertically or horizontally",
     parameters: {
       type: "object",
       properties: {
@@ -92,7 +108,7 @@ export function registerObsidianTools(pi) {
     parameters: {
       type: "object",
       properties: {
-        command_id: { type: "string", description: "The Obsidian command identifier (e.g. app:open-settings)" },
+        command_id: { type: "string", description: "Obsidian command identifier" },
       },
       required: ["command_id"],
     },
@@ -138,8 +154,8 @@ export function registerObsidianTools(pi) {
     parameters: {
       type: "object",
       properties: {
-        config_type: { type: "string", description: "Config type (e.g. 'app', 'appearance')" },
-        updates: { type: "object", description: "Key-value pairs or array to update/merge" },
+        config_type: { type: "string", description: "Config type" },
+        updates: { type: "object", description: "Key-value pairs to update/merge" },
         vault: { type: "string", description: "Vault path override" },
       },
       required: ["config_type", "updates"],

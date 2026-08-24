@@ -106,6 +106,13 @@ Tags: #project/nix #obsidian-dev.
     assert.ok(fs.existsSync(path.join(tmpVault, ".obsidian", "plugins", "pi-bridge", "main.js")));
     const pluginsJson = await readSettings(tmpVault, "community-plugins");
     assert.ok(pluginsJson.data.includes("pi-bridge"));
+
+    // 7. Test getObsidianLayout offline fallback
+    const { getObsidianLayout } = await import("../extensions/client.js");
+    await fs.promises.writeFile(path.join(tmpVault, ".obsidian", "workspace.json"), JSON.stringify({ main: { type: "split" } }), "utf-8");
+    const layoutRes = await getObsidianLayout({ url: "http://127.0.0.1:9999" }, tmpVault);
+    assert.ok(layoutRes.success);
+    assert.equal(layoutRes.layout.main.type, "split");
   } finally {
     await fs.promises.rm(tmpVault, { recursive: true, force: true });
   }
