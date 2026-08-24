@@ -126,6 +126,12 @@
           skill-commit-style = pkgs.callPackage ./packages/skills/commit-style {
             mkPiSkill = nixpiLib.mkPiSkill;
           };
+          obsidian-screenshot = pkgs.callPackage ./packages/skills/obsidian-screenshot {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-obsidian-screenshot = pkgs.callPackage ./packages/skills/obsidian-screenshot {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
         }
       );
 

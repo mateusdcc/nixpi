@@ -1,5 +1,7 @@
 const { Plugin } = require("obsidian");
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
 
 module.exports = class PiBridgePlugin extends Plugin {
   async onload() {
@@ -23,9 +25,7 @@ module.exports = class PiBridgePlugin extends Plugin {
       }
       this.handleRequest(req, res);
     });
-    this.server.on("error", (err) => {
-      console.error("[Pi Bridge] Server error:", err.message);
-    });
+    this.server.on("error", (err) => console.error("[Pi Bridge] Server error:", err.message));
     this.server.listen(this.port, "127.0.0.1", () => {
       console.log(`[Pi Bridge] Server listening on http://127.0.0.1:${this.port}`);
     });
@@ -57,16 +57,13 @@ module.exports = class PiBridgePlugin extends Plugin {
 
   async route(method, pathname, body, params) {
     if (pathname === "/" || pathname === "/status") return this.handleStatus();
+    if (pathname === "/screenshot") return this.handleScreenshot(body, params);
     if (pathname === "/layout" || pathname === "/workspace/layout") return this.handleLayout();
     if (pathname === "/open") return this.handleOpen(body, params);
     if (pathname === "/split") return this.handleSplit(body, params);
     if (pathname === "/commands") return this.handleListCommands();
-    if (pathname.startsWith("/commands/") || pathname === "/command") {
-      return this.handleRunCommand(pathname, body, params);
-    }
-    if (pathname === "/settings" || pathname === "/settings/open") {
-      return this.handleOpenSettings(body);
-    }
+    if (pathname.startsWith("/commands/") || pathname === "/command") return this.handleRunCommand(pathname, body, params);
+    if (pathname === "/settings" || pathname === "/settings/open") return this.handleOpenSettings(body);
     if (pathname === "/metadata") return this.handleMetadata(body, params);
     throw new Error(`Route not found: ${method} ${pathname}`);
   }
@@ -76,11 +73,52 @@ module.exports = class PiBridgePlugin extends Plugin {
     return { status: "ok", vault: this.app.vault.getName(), commandsCount: cmdCount };
   }
 
+  async handleScreenshot(body, params) {
+    const electron = require("electron");
+    const win = electron.remote?.getCurrentWindow ? electron.remote.getCurrentWindow() : null;
+    const webContents = electron.remote?.getCurrentWebContents ? electron.remote.getCurrentWebContents() : win?.webContents;
+    if (!webContents) throw new Error("Obsidian webContents not accessible");
+
+    const mode = body.mode || params.get("mode") || "window";
+    let rect = body.rect;
+    if (mode === "active_pane" && typeof document !== "undefined") {
+      const activeEl = document.querySelector(".workspace-leaf.mod-active") || document.querySelector(".workspace-leaf");
+      if (activeEl) {
+        const domRect = activeEl.getBoundingClientRect();
+        rect = {
+          x: Math.round(domRect.x),
+          y: Math.round(domRect.y),
+          width: Math.round(domRect.width),
+          height: Math.round(domRect.height),
+        };
+      }
+    }
+
+    const img = await webContents.capturePage(rect);
+    const pngBuffer = img.toPNG();
+    const basePath = this.app.vault.adapter.basePath || process.cwd();
+    const outDir = path.join(basePath, ".pi", "screenshots");
+    fs.mkdirSync(outDir, { recursive: true });
+
+    const filename = body.filename || `screenshot-${Date.now()}.png`;
+    const targetPath = path.join(outDir, filename);
+    fs.writeFileSync(targetPath, pngBuffer);
+
+    return {
+      success: true,
+      path: targetPath,
+      filename,
+      mode,
+      size: { width: img.getSize().width, height: img.getSize().height },
+      bytes: pngBuffer.length,
+      method: "obsidian-capturePage",
+    };
+  }
+
   handleLayout() {
     const layout = this.app.workspace.getLayout();
     const activeFile = this.app.workspace.getActiveFile()?.path || null;
-    const summary = this.summarizeLayout(layout, activeFile);
-    return { success: true, activeFile, summary, layout };
+    return { success: true, activeFile, summary: this.summarizeLayout(layout, activeFile), layout };
   }
 
   summarizeLayout(layout, activeFile) {
@@ -126,11 +164,8 @@ module.exports = class PiBridgePlugin extends Plugin {
 
     const tfile = this.app.metadataCache.getFirstLinkpathDest(file, "") ||
       this.app.vault.getAbstractFileByPath(file.endsWith(".md") ? file : `${file}.md`);
-    if (tfile) {
-      await leaf.openFile(tfile);
-    } else {
-      await this.app.workspace.openLinkText(file, "", newLeaf);
-    }
+    if (tfile) await leaf.openFile(tfile);
+    else await this.app.workspace.openLinkText(file, "", newLeaf);
     return { success: true, file };
   }
 

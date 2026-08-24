@@ -6,6 +6,7 @@ import {
   runObsidianCommand,
   openObsidianSettings,
   getObsidianLayout,
+  takeObsidianScreenshot,
 } from "./client.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
 import { installPluginFromGitHub } from "./installer.js";
@@ -13,6 +14,15 @@ import { ensureCompanionPlugin } from "./bridge.js";
 
 export function registerObsidianCommands(pi) {
   if (!pi || !pi.registerCommand) return;
+
+  pi.registerCommand("obsidian-screenshot", {
+    description: "Take in-app screenshot: /obsidian-screenshot [window|active_pane]",
+    handler: async (args) => {
+      const mode = args?.trim() === "active_pane" ? "active_pane" : "window";
+      const res = await takeObsidianScreenshot({ mode });
+      console.log(JSON.stringify(res, null, 2));
+    },
+  });
 
   pi.registerCommand("obsidian-layout", {
     description: "Get current Obsidian workspace layout: /obsidian-layout",

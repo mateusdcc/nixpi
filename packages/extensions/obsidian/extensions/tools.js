@@ -6,6 +6,7 @@ import {
   runObsidianCommand,
   openObsidianSettings,
   getObsidianLayout,
+  takeObsidianScreenshot,
 } from "./client.js";
 import { readSettings, updateSettings } from "./settings.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
@@ -19,6 +20,31 @@ function respond(data) {
 
 export function registerObsidianTools(pi) {
   if (!pi || !pi.registerTool) return;
+
+  pi.registerTool({
+    name: "obsidian_take_screenshot",
+    label: "Obsidian Take Screenshot",
+    description: "Take an in-app screenshot of Obsidian (window or active editor pane) without OS permissions",
+    parameters: {
+      type: "object",
+      properties: {
+        mode: {
+          type: "string",
+          enum: ["window", "active_pane"],
+          default: "window",
+          description: "Capture mode: 'window' for full app or 'active_pane' for active editor pane",
+        },
+        filename: { type: "string", description: "Optional PNG filename" },
+      },
+    },
+    async execute(id, params) {
+      const res = await takeObsidianScreenshot({
+        mode: params?.mode || "window",
+        filename: params?.filename,
+      });
+      return respond(res);
+    },
+  });
 
   pi.registerTool({
     name: "obsidian_get_layout",

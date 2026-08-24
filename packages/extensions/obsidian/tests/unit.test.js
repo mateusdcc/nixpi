@@ -156,6 +156,11 @@ Tags: #project/nix #obsidian-dev.
   assert.ok(fallbacks.some((c) => c.id === "workspace:split-vertical"));
   assert.ok(fallbacks.some((c) => c.id === "app:open-settings"));
 
+  // 9. Test takeObsidianScreenshot client signature
+  const { takeObsidianScreenshot } = await import("../extensions/client.js");
+  const failedShot = await takeObsidianScreenshot({}, { url: "http://127.0.0.1:9999" });
+  assert.equal(failedShot.success, false);
+
   console.log("All unit tests passed successfully!");
 }
 

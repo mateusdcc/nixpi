@@ -61,6 +61,23 @@ export async function getObsidianLayout(clientConfig = {}, vaultDir = null) {
   return { success: false, error: "Unable to retrieve Obsidian workspace layout" };
 }
 
+export async function takeObsidianScreenshot(options = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/screenshot`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: options,
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: false, error: "Failed to take Obsidian screenshot via Bridge" };
+}
+
 export async function openNoteInApp(filePath, vaultPathOrName, clientConfig = {}) {
   const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
   try {
