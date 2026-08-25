@@ -305,13 +305,13 @@ export async function getMasteryLedger(conceptId = null, clientConfig = {}) {
   }
 }
 
-export async function updateMasteryLedger(conceptId, objectives = {}, clientConfig = {}) {
+export async function migrateNoteSections(notePath, clientConfig = {}) {
   const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
   try {
-    const res = await executeHttpRequest(`${url}/learning/mastery`, {
+    const res = await executeHttpRequest(`${url}/learning/migrate-sections`, {
       method: "POST",
       headers: buildHeaders(apiKey),
-      body: { concept_id: conceptId, objectives },
+      body: { note_path: notePath },
     });
     if (res.status === 200) {
       return JSON.parse(res.data);
@@ -321,6 +321,108 @@ export async function updateMasteryLedger(conceptId, objectives = {}, clientConf
     return { success: false, error: err.message };
   }
 }
+
+export async function appendSectionAddition(params = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/learning/append-addition`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: params,
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getLearningSession(clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/learning/session`, {
+      method: "GET",
+      headers: buildHeaders(apiKey),
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateLearningSession(sessionPayload = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/learning/session`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: sessionPayload,
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function branchToPrerequisite(params = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/learning/prerequisite-branch`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: params,
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function returnFromPrerequisiteBranch(params = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/learning/return-from-branch`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: params,
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function recordMasteryEvidence(params = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/learning/record-evidence`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: params,
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 
 
 

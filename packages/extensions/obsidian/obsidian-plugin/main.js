@@ -2,6 +2,7 @@ const { Plugin, Modal, Notice } = require("obsidian");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 
 class DiagnosticProbeModal extends Modal {
   constructor(app, options, resolve) {
@@ -156,14 +157,17 @@ module.exports = class PiBridgePlugin extends Plugin {
     }
   }
 
+  getBasePath() {
+    return this.app.vault.adapter.basePath || process.cwd();
+  }
+
   getLearningDir() {
-    const basePath = this.app.vault.adapter.basePath || process.cwd();
-    const learningDir = path.join(basePath, ".pi", "learning");
+    const learningDir = path.join(this.getBasePath(), ".pi", "learning");
     fs.mkdirSync(learningDir, { recursive: true });
     return learningDir;
   }
 
-  readJsonFile(filename, defaultVal = []) {
+  readJsonFile(filename, defaultVal = {}) {
     const filePath = path.join(this.getLearningDir(), filename);
     if (fs.existsSync(filePath)) {
       try { return JSON.parse(fs.readFileSync(filePath, "utf-8")); } catch {}
@@ -176,8 +180,205 @@ module.exports = class PiBridgePlugin extends Plugin {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
   }
 
+  resolveNotePath(relOrAbsPath) {
+    if (path.isAbsolute(relOrAbsPath)) return relOrAbsPath;
+    return path.join(this.getBasePath(), relOrAbsPath);
+  }
+
+  computeHash(str) {
+    return crypto.createHash("sha256").update(str.trim()).digest("hex");
+  }
+
+  // --- Protected Section Parser & Migration ---
+
+  slugifySectionHeading(heading) {
+    return heading
+      .toLowerCase()
+      .replace(/^#+\s*/, "")
+      .replace(/^\d+[\.\)]\s*/, "")
+      .replace(/[^\w\s-]/g, "")
+      .trim()
+      .replace(/\s+/g, "-");
+  }
+
+  migrateNoteToProtectedSections(notePath) {
+    const fullPath = this.resolveNotePath(notePath);
+    if (!fs.existsSync(fullPath)) throw new Error(`Note not found: ${notePath}`);
+
+    const raw = fs.readFileSync(fullPath, "utf-8");
+    if (raw.includes("<!-- PI:SECTION") && raw.includes("CORE-START -->")) {
+      return { success: true, already_migrated: true, note_path: notePath };
+    }
+
+    const lines = raw.split("\n");
+    const newLines = [];
+    let inFrontmatter = false;
+    let frontmatterDone = false;
+    let currentSectionId = null;
+    let currentSectionLines = [];
+
+    const flushCurrentSection = () => {
+      if (!currentSectionId) {
+        newLines.push(...currentSectionLines);
+        currentSectionLines = [];
+        return;
+      }
+      const sectionContent = currentSectionLines.join("\n").trim();
+      newLines.push(`<!-- PI:SECTION ${currentSectionId} CORE-START -->`);
+      newLines.push(sectionContent);
+      newLines.push(`<!-- PI:SECTION ${currentSectionId} CORE-END -->\n`);
+      newLines.push(`<!-- PI:SECTION ${currentSectionId} ADDITIONS-START -->`);
+      newLines.push(`<!-- PI:SECTION ${currentSectionId} ADDITIONS-END -->\n`);
+      currentSectionLines = [];
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      if (i === 0 && line.trim() === "---") {
+        inFrontmatter = true;
+        newLines.push(line);
+        continue;
+      }
+
+      if (inFrontmatter) {
+        newLines.push(line);
+        if (line.trim() === "---") {
+          inFrontmatter = false;
+          frontmatterDone = true;
+        }
+        continue;
+      }
+
+      const matchH2 = line.match(/^##\s+(.+)$/);
+      if (matchH2) {
+        flushCurrentSection();
+        const rawHeading = matchH2[1].trim();
+        currentSectionId = this.slugifySectionHeading(rawHeading);
+        currentSectionLines.push(line);
+      } else {
+        currentSectionLines.push(line);
+      }
+    }
+    flushCurrentSection();
+
+    const migratedContent = newLines.join("\n");
+    fs.writeFileSync(fullPath, migratedContent, "utf-8");
+
+    // Record baseline core hashes
+    this.recordNoteCoreHashes(notePath, migratedContent);
+
+    return { success: true, migrated: true, note_path: notePath };
+  }
+
+  recordNoteCoreHashes(notePath, content) {
+    const hashes = this.readJsonFile("core_hashes.json", {});
+    const sectionRegex = /<!-- PI:SECTION ([\w-]+) CORE-START -->([\s\S]*?)<!-- PI:SECTION \1 CORE-END -->/g;
+    let match;
+    const noteHashes = {};
+
+    while ((match = sectionRegex.exec(content)) !== null) {
+      const secId = match[1];
+      const secCore = match[2];
+      noteHashes[secId] = this.computeHash(secCore);
+    }
+    hashes[notePath] = noteHashes;
+    this.writeJsonFile("core_hashes.json", hashes);
+    return noteHashes;
+  }
+
+  validateNoteCoreHashes(notePath, content) {
+    const hashes = this.readJsonFile("core_hashes.json", {});
+    const recorded = hashes[notePath];
+    if (!recorded) return { valid: true, warning: "No recorded hashes for note yet" };
+
+    const sectionRegex = /<!-- PI:SECTION ([\w-]+) CORE-START -->([\s\S]*?)<!-- PI:SECTION \1 CORE-END -->/g;
+    let match;
+    const current = {};
+    while ((match = sectionRegex.exec(content)) !== null) {
+      current[match[1]] = this.computeHash(match[2]);
+    }
+
+    for (const [secId, expHash] of Object.entries(recorded)) {
+      if (!current[secId]) {
+        return { valid: false, error: `Protected section '${secId}' was deleted or renamed in ${notePath}` };
+      }
+      if (current[secId] !== expHash) {
+        return { valid: false, error: `Protected core in section '${secId}' was modified in ${notePath}. Layer A is immutable.` };
+      }
+    }
+    return { valid: true };
+  }
+
+  appendSectionAddition(params) {
+    const { note_path, section_id, addition_id, addition_type, source_question_id, content, linked_notes } = params;
+    if (!note_path || !section_id || !content) {
+      throw new Error("Missing required fields: note_path, section_id, content");
+    }
+
+    const fullPath = this.resolveNotePath(note_path);
+    if (!fs.existsSync(fullPath)) throw new Error(`Note not found: ${note_path}`);
+
+    let raw = fs.readFileSync(fullPath, "utf-8");
+
+    // If not migrated yet, migrate first
+    if (!raw.includes("<!-- PI:SECTION") || !raw.includes("CORE-START -->")) {
+      this.migrateNoteToProtectedSections(note_path);
+      raw = fs.readFileSync(fullPath, "utf-8");
+    }
+
+    // Validate core hashes
+    const valResult = this.validateNoteCoreHashes(note_path, raw);
+    if (!valResult.valid) {
+      throw new Error(`Core integrity check failed: ${valResult.error}`);
+    }
+
+    const startMarker = `<!-- PI:SECTION ${section_id} ADDITIONS-START -->`;
+    const endMarker = `<!-- PI:SECTION ${section_id} ADDITIONS-END -->`;
+
+    const startIdx = raw.indexOf(startMarker);
+    const endIdx = raw.indexOf(endMarker);
+
+    if (startIdx === -1 || endIdx === -1) {
+      throw new Error(`Section addition markers not found for section: ${section_id}`);
+    }
+
+    const existingAdditions = raw.substring(startIdx + startMarker.length, endIdx);
+    const addId = addition_id || `add_${Date.now()}`;
+
+    // Idempotency check
+    if (existingAdditions.includes(`id="${addId}"`)) {
+      return { success: true, idempotent_skip: true, addition_id: addId, message: "Addition already present" };
+    }
+
+    const linksFormatted = Array.isArray(linked_notes) && linked_notes.length > 0
+      ? `\n\n**Related Prerequisite Notes:**\n${linked_notes.map((n) => `- [[${n}]]`).join("\n")}`
+      : "";
+
+    const formattedAddition = `\n<!-- PI:ADDITION id="${addId}" type="${addition_type || "clarification"}" source="${source_question_id || ""}" -->\n${content.trim()}${linksFormatted}\n<!-- PI:ADDITION-END id="${addId}" -->\n`;
+
+    const updatedContent = raw.substring(0, endIdx) + formattedAddition + raw.substring(endIdx);
+    fs.writeFileSync(fullPath, updatedContent, "utf-8");
+
+    // Update active learning session log
+    const session = this.readJsonFile("session.json", {});
+    if (!session.appended_additions) session.appended_additions = [];
+    session.appended_additions.push({
+      addition_id: addId,
+      note_path,
+      section_id,
+      addition_type: addition_type || "clarification",
+      source_question_id: source_question_id || null,
+      timestamp: new Date().toISOString(),
+    });
+    this.writeJsonFile("session.json", session);
+
+    return { success: true, addition_id: addId, note_path, section_id };
+  }
+
+  // --- CodeBlock Processors ---
+
   registerCodeBlockProcessors() {
-    // 1. In-Note Quiz Processor
     this.registerMarkdownCodeBlockProcessor("pi-quiz", (source, el, ctx) => {
       const config = this.parseConfig(source);
       el.empty();
@@ -194,7 +395,6 @@ module.exports = class PiBridgePlugin extends Plugin {
       card.style.margin = "14px 0";
       card.style.backgroundColor = "var(--background-secondary)";
 
-      // Header row with family badge & submission status
       const headerRow = card.createEl("div");
       headerRow.style.display = "flex";
       headerRow.style.justifyContent = "space-between";
@@ -211,13 +411,11 @@ module.exports = class PiBridgePlugin extends Plugin {
       statusBadge.style.fontSize = "11px";
       statusBadge.style.color = "var(--text-muted)";
 
-      // Question text
       const questionText = card.createEl("div", { text: config.question || config.prompt || "Answer the following probe:" });
       questionText.style.fontWeight = "600";
       questionText.style.marginBottom = "10px";
       questionText.style.lineHeight = "1.4";
 
-      // Input area (choice vs text)
       let currentAnswer = "";
       let currentConfidence = "medium";
       let textarea = null;
@@ -257,7 +455,6 @@ module.exports = class PiBridgePlugin extends Plugin {
         });
       }
 
-      // Confidence selector
       const confRow = card.createEl("div");
       confRow.style.display = "flex";
       confRow.style.alignItems = "center";
@@ -280,7 +477,6 @@ module.exports = class PiBridgePlugin extends Plugin {
         });
       });
 
-      // Feedback container (durable inline)
       const feedbackBox = card.createEl("div");
       feedbackBox.style.display = "none";
       feedbackBox.style.marginTop = "10px";
@@ -289,7 +485,6 @@ module.exports = class PiBridgePlugin extends Plugin {
       feedbackBox.style.backgroundColor = "var(--background-primary)";
       feedbackBox.style.border = "1px solid var(--background-modifier-border)";
 
-      // Check existing submission and feedback
       const submissions = this.readJsonFile("submissions.json", []);
       const existing = submissions.filter((s) => s.question_id === qId).pop();
       if (existing) {
@@ -306,7 +501,6 @@ module.exports = class PiBridgePlugin extends Plugin {
         }
       }
 
-      // Button Row
       const btnRow = card.createEl("div");
       btnRow.style.display = "flex";
       btnRow.style.justifyContent = "space-between";
@@ -366,7 +560,6 @@ module.exports = class PiBridgePlugin extends Plugin {
       });
     });
 
-    // 2. In-Note Section Action Processor (Interactive Inquiries)
     this.registerMarkdownCodeBlockProcessor("pi-action", (source, el, ctx) => {
       const config = this.parseConfig(source);
       el.empty();
@@ -552,6 +745,25 @@ module.exports = class PiBridgePlugin extends Plugin {
       return { success: true };
     }
 
+    // Protected Note Additions & Migration
+    if (pathname === "/learning/migrate-sections" && method === "POST") {
+      return this.migrateNoteToProtectedSections(body.note_path);
+    }
+    if (pathname === "/learning/append-addition" && method === "POST") {
+      return this.appendSectionAddition(body);
+    }
+
+    // Session Management API
+    if (pathname === "/learning/session" && method === "GET") return this.handleSessionGet();
+    if (pathname === "/learning/session" && method === "POST") return this.handleSessionPost(body);
+
+    // Prerequisite Branch API
+    if (pathname === "/learning/prerequisite-branch" && method === "POST") return this.handlePrerequisiteBranch(body);
+    if (pathname === "/learning/return-from-branch" && method === "POST") return this.handleReturnFromBranch(body);
+
+    // Mastery & Evidence Recording API
+    if (pathname === "/learning/record-evidence" && method === "POST") return this.handleRecordMasteryEvidence(body);
+
     // Queue & Submissions API
     if (pathname === "/quiz/submissions" && method === "POST") return this.handleQuizSubmissionPost(body);
     if (pathname === "/quiz/submissions" && method === "GET") return this.handleQuizSubmissionList(params);
@@ -584,6 +796,210 @@ module.exports = class PiBridgePlugin extends Plugin {
     return { status: "ok", vault: this.app.vault.getName(), commandsCount: cmdCount };
   }
 
+  handleSessionGet() {
+    const session = this.readJsonFile("session.json", {
+      topic_id: null,
+      lab_path: null,
+      lab_status: "idle",
+      active_section_id: null,
+      active_objective_id: null,
+      current_state: "IDLE",
+      branch_stack: [],
+      section_states: {},
+      unresolved_questions: [],
+      misconceptions: [],
+      mastery_evidence: [],
+      created_notes: [],
+      appended_additions: [],
+      last_synchronized_turn: null,
+    });
+    return { success: true, session };
+  }
+
+  handleSessionPost(body) {
+    const session = this.readJsonFile("session.json", {});
+    const updated = { ...session, ...body, updated_at: new Date().toISOString() };
+    this.writeJsonFile("session.json", updated);
+    return { success: true, session: updated };
+  }
+
+  handlePrerequisiteBranch(body) {
+    const { parent_lab, triggered_from_section, triggered_by_question, prerequisite_concept_id, prerequisite_title, capability_target } = body;
+    if (!parent_lab || !prerequisite_concept_id) throw new Error("Missing parent_lab or prerequisite_concept_id");
+
+    const session = this.readJsonFile("session.json", {});
+    if (!session.branch_stack) session.branch_stack = [];
+
+    session.branch_stack.push({
+      parent_lab,
+      return_to_section: triggered_from_section || session.active_section_id || "formal-core",
+      triggered_by_question: triggered_by_question || null,
+      prerequisite_concept_id,
+      branched_at: new Date().toISOString(),
+    });
+
+    const prereqFilename = `notes/${prerequisite_concept_id}-concept-lab.md`;
+    const fullPath = this.resolveNotePath(prereqFilename);
+
+    if (!fs.existsSync(fullPath)) {
+      const template = `---
+type: prerequisite-concept-lab
+parent_lab: ${parent_lab}
+triggered_from_section: ${triggered_from_section || "formal-core"}
+triggered_by_question: ${triggered_by_question || ""}
+return_to_section: ${triggered_from_section || "formal-core"}
+concept_id: ${prerequisite_concept_id}
+status: learning
+created: ${new Date().toISOString().split("T")[0]}
+---
+
+# Prerequisite Concept Lab: ${prerequisite_title || prerequisite_concept_id}
+
+<!-- PI:SECTION capability-target CORE-START -->
+## 1. Capability Target
+${capability_target || "Build essential prerequisite mental model required for parent lab."}
+<!-- PI:SECTION capability-target CORE-END -->
+<!-- PI:SECTION capability-target ADDITIONS-START -->
+<!-- PI:SECTION capability-target ADDITIONS-END -->
+
+<!-- PI:SECTION problem-context CORE-START -->
+## 2. The Problem Before the Terminology
+<!-- Ground the concept in a concrete failure scenario -->
+<!-- PI:SECTION problem-context CORE-END -->
+<!-- PI:SECTION problem-context ADDITIONS-START -->
+<!-- PI:SECTION problem-context ADDITIONS-END -->
+
+<!-- PI:SECTION intuitive-causal-model CORE-START -->
+## 3. Intuitive Causal Model
+<!-- Step by step mechanism -->
+<!-- PI:SECTION intuitive-causal-model CORE-END -->
+<!-- PI:SECTION intuitive-causal-model ADDITIONS-START -->
+<!-- PI:SECTION intuitive-causal-model ADDITIONS-END -->
+
+<!-- PI:SECTION mastery-gate CORE-START -->
+## 12. Mastery Evidence & Gate
+<!-- Prerequisite gate threshold -->
+<!-- PI:SECTION mastery-gate CORE-END -->
+<!-- PI:SECTION mastery-gate ADDITIONS-START -->
+<!-- PI:SECTION mastery-gate ADDITIONS-END -->
+`;
+      fs.writeFileSync(fullPath, template, "utf-8");
+      this.recordNoteCoreHashes(prereqFilename, template);
+      if (!session.created_notes) session.created_notes = [];
+      session.created_notes.push(prereqFilename);
+    }
+
+    // Add prerequisite branch callout to parent lab additions
+    try {
+      this.appendSectionAddition({
+        note_path: parent_lab,
+        section_id: triggered_from_section || "formal-core",
+        addition_id: `branch_${prerequisite_concept_id}`,
+        addition_type: "prerequisite_branch",
+        source_question_id: triggered_by_question,
+        content: `> [!PREREQUISITE BRANCH]\n> To understand the foundational mechanics required for this section, complete [[${prerequisite_concept_id}-concept-lab|${prerequisite_title || prerequisite_concept_id}]].`,
+        linked_notes: [`${prerequisite_concept_id}-concept-lab`],
+      });
+    } catch {}
+
+    session.lab_path = prereqFilename;
+    session.active_section_id = "capability-target";
+    session.current_state = "PREREQUISITE_TEACHING";
+    this.writeJsonFile("session.json", session);
+
+    return { success: true, prerequisite_lab: prereqFilename, branch_depth: session.branch_stack.length };
+  }
+
+  handleReturnFromBranch(body) {
+    const session = this.readJsonFile("session.json", {});
+    if (!session.branch_stack || session.branch_stack.length === 0) {
+      throw new Error("No active prerequisite branch to return from");
+    }
+
+    const branch = session.branch_stack.pop();
+    session.lab_path = branch.parent_lab;
+    session.active_section_id = branch.return_to_section;
+    session.current_state = "SECTION_TEACHING";
+    this.writeJsonFile("session.json", session);
+
+    return {
+      success: true,
+      returned_to_lab: branch.parent_lab,
+      returned_to_section: branch.return_to_section,
+      remaining_branches: session.branch_stack.length,
+    };
+  }
+
+  handleRecordMasteryEvidence(body) {
+    const { concept_id, section_id, objective_id, previous_level, new_level, evidence, unresolved_misconceptions } = body;
+    if (!concept_id || !objective_id) throw new Error("Missing concept_id or objective_id");
+
+    const session = this.readJsonFile("session.json", {});
+    if (!session.mastery_evidence) session.mastery_evidence = [];
+
+    // Strict Anti-Fake Mastery Rule:
+    // If target level is >= 3 (applied), evidence MUST contain sound causal reasoning without "not sure" or guesses
+    const requestedLevel = typeof new_level === "number" ? new_level : parseInt(new_level, 10);
+    const evList = Array.isArray(evidence) ? evidence : [];
+
+    let sanctionedLevel = requestedLevel;
+    let failureReason = null;
+
+    if (requestedLevel >= 3) {
+      const hasInvalidExcerpts = evList.some((e) => {
+        const text = (e.answer_excerpt || "").toLowerCase();
+        return text.includes("not sure") || text.includes("i do not know") || text.includes("no idea") || text.trim() === "";
+      });
+
+      if (hasInvalidExcerpts || evList.length === 0) {
+        sanctionedLevel = Math.min(requestedLevel, 1); // Cap at 1 (recognized) or 0
+        failureReason = "Answer contained uncertainty ('not sure' / 'do not know' / missing causal trace). Mastery capped at level 1.";
+      }
+
+      if (Array.isArray(unresolved_misconceptions) && unresolved_misconceptions.length > 0) {
+        sanctionedLevel = Math.min(sanctionedLevel, 2);
+        failureReason = "Unresolved critical misconceptions present. Mastery capped at level 2.";
+      }
+    }
+
+    const record = {
+      record_id: `ev_${Date.now()}`,
+      concept_id,
+      section_id: section_id || session.active_section_id || "general",
+      objective_id,
+      previous_level: previous_level ?? 0,
+      requested_level: requestedLevel,
+      sanctioned_level: sanctionedLevel,
+      evidence: evList,
+      unresolved_misconceptions: unresolved_misconceptions || [],
+      sanctioned: sanctionedLevel === requestedLevel,
+      failure_reason: failureReason,
+      recorded_at: new Date().toISOString(),
+    };
+
+    session.mastery_evidence.push(record);
+    this.writeJsonFile("session.json", session);
+
+    // Update mastery.json ledger
+    const mastery = this.readJsonFile("mastery.json", {});
+    if (!mastery[concept_id]) mastery[concept_id] = {};
+    mastery[concept_id][objective_id] = {
+      level: sanctionedLevel,
+      level_name: ["unprobed", "recognized", "explained", "applied", "transferred", "critiqued_constructed"][sanctionedLevel] || "unknown",
+      last_updated: new Date().toISOString(),
+      evidence_id: record.record_id,
+    };
+    this.writeJsonFile("mastery.json", mastery);
+
+    return {
+      success: true,
+      sanctioned_level: sanctionedLevel,
+      is_approved: sanctionedLevel === requestedLevel,
+      failure_reason: failureReason,
+      record,
+    };
+  }
+
   handleQuizSubmissionPost(body) {
     const list = this.readJsonFile("submissions.json", []);
     const subId = body.submission_id || `sub_${Date.now()}`;
@@ -601,7 +1017,6 @@ module.exports = class PiBridgePlugin extends Plugin {
       submitted_at: new Date().toISOString(),
     };
 
-    // Idempotent replace if same question_id and pending
     const existingIdx = list.findIndex((s) => s.question_id === entry.question_id && s.status === "pending");
     if (existingIdx !== -1) {
       list[existingIdx] = entry;
@@ -642,15 +1057,24 @@ module.exports = class PiBridgePlugin extends Plugin {
     };
     this.writeJsonFile("submissions.json", list);
 
-    // Update mastery ledger
+    // Record formal mastery evidence
     if (item.concept_id && item.objective_id) {
-      const mastery = this.readJsonFile("mastery.json", {});
-      if (!mastery[item.concept_id]) mastery[item.concept_id] = {};
-      mastery[item.concept_id][item.objective_id] = {
-        level: body.mastery_level || "applied",
-        last_updated: new Date().toISOString(),
-      };
-      this.writeJsonFile("mastery.json", mastery);
+      const levelMap = { unprobed: 0, recognized: 1, explained: 2, applied: 3, transferred: 4, critiqued_constructed: 5 };
+      const numericLevel = levelMap[body.mastery_level] ?? 3;
+      this.handleRecordMasteryEvidence({
+        concept_id: item.concept_id,
+        section_id: body.section_id || "interleaved-probes",
+        objective_id: item.objective_id,
+        previous_level: 0,
+        new_level: numericLevel,
+        evidence: [{
+          question_id: item.question_id,
+          answer_excerpt: item.answer,
+          evaluation: body.assessment,
+          timestamp: new Date().toISOString(),
+        }],
+        unresolved_misconceptions: body.identified_misconceptions ? [body.identified_misconceptions] : [],
+      });
     }
 
     new Notice(`[Evaluation Completed] ${item.question_id}: ${body.mastery_level || "Recorded"}`);

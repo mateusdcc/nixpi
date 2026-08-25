@@ -5,98 +5,165 @@
 
 mkPiSkill {
   name = "deep-comprehension-engine";
-  description = "Canonical orchestrator for fast-paced, high-rigor, example-rich, adaptively scaffolded deep comprehension and Concept Lab authoring.";
+  description = "Master orchestrator for fast-paced, high-rigor deep comprehension with protected Concept Lab architecture, section-by-section state machine, prerequisite branching, and closed-loop mastery verification.";
   content = ''
     # Deep Comprehension Engine Protocol
 
-    ## Fundamental Objective
-    The learning environment is built for a cognitively fast learner who wants unusually deep, durable comprehension.
-
-    Core Invariants:
-    - Cognitive pace: fast.
-    - Conceptual depth: immersive.
-    - Example density: high (mandatory 8-family Example Lattice).
-    - Question density: high (12-16 interleaved questions per concept).
-    - Formal rigor: high when appropriate (no jargon inflation).
-    - Scaffolding: adaptive rather than automatically minimal.
-    - Abstraction order: concrete -> causal -> visual -> formal -> adversarial -> transfer.
-    - Mastery standard: explain, predict, discriminate, apply, critique, and transfer.
-
-    Prohibitions:
-    - Never skip intermediate causal steps.
-    - Never replace examples with empty abstractions.
-    - Never introduce decorative cross-domain analogies before the primary mechanism is understood.
-    - Never ask only difficult essay questions; use diverse question families.
-    - Never use jargon density as a proxy for rigor.
-    - Never mark a concept as learned after one correct answer.
-    - Never dump large amounts of information without interleaved interaction.
-    - Zero emojis across all terminal outputs, banners, and notes.
+    ## 1. Core Pedagogical Invariants
+    - **Cognitive Pace**: Fast.
+    - **Conceptual Depth**: Immersive, profound, and mathematically/mechanically grounded.
+    - **Example Density**: High (mandatory 8-family Example Lattice).
+    - **Question Density**: High (interleaved diagnostic, prediction, discrimination, and transfer probes).
+    - **Layer Architecture**:
+      - **Layer A (Immutable Conceptual Core)**: The initial abstract, profound Concept Lab skeleton. Never simplify, delete, rewrite, or replace original text.
+      - **Layer B (Dialogue-Derived Learning Additions)**: Curated clarifications, concrete mechanical models, precision corrections, and prerequisite links appended into protected section additions regions.
+    - **Mastery Standard**: Real ability to explain, predict, discriminate, apply, critique, and transfer.
+    - **Zero Emojis**: Across all terminal outputs, banners, and Obsidian notes.
 
     ---
 
-    ## Teaching vs. Storage Separation
-    - **Concept Lab** (`type: concept-lab`): The interactive teaching, practicing, and diagnostic environment in Obsidian. Contains all 13 structured sections, the 8-family Example Lattice, negation labs, and interleaved `pi-quiz` and `pi-action` blocks.
-    - **Permanent Atomic Note** (`type: permanent-atomic-note`): Compressed reference note generated ONLY after the learner passes the objective-level mastery gate.
+    ## 2. Protected Section Architecture
+
+    Every Concept Lab in Obsidian (`notes/<topic>-concept-lab.md`) MUST be formatted with protected section boundaries:
+
+    ```markdown
+    <!-- PI:SECTION section-id CORE-START -->
+    <original abstract section content>
+    <!-- PI:SECTION section-id CORE-END -->
+
+    <!-- PI:SECTION section-id ADDITIONS-START -->
+    <!-- Dialogue-derived additions are appended here -->
+    <!-- PI:SECTION section-id ADDITIONS-END -->
+    ```
+
+    Rules:
+    1. **Layer A is strictly immutable**: Text between `CORE-START` and `CORE-END` is never modified after initial generation.
+    2. **Protected Appends Only**: Use `obsidian_append_section_addition` to insert curated dialogue results.
+    3. **Idempotency**: Every addition has a unique `addition_id` to prevent duplicate appends.
+    4. **Precision Callouts**: If an original sentence is imprecise, append a `> [!CORRECTION]` callout under additions rather than rewriting the core.
 
     ---
 
-    ## 8-Phase Deep-Comprehension Workflow
+    ## 3. Section-by-Section State Machine
 
-    ### Phase 1: Define the Learning Contract
-    Determine:
-    - Topic and intended capability.
-    - Desired depth and available time.
-    - Relevant prior knowledge.
-    - Target mastery standard (default: transfer).
-    Default profile:
-    `pace: fast, depth: immersive, example_density: high, question_density: high, formalism: adaptive, interaction: frequent, mastery_required: transfer`
+    ```text
+    LAB_CREATED
+        ↓
+    SECTION_SELECTED
+        ↓
+    SECTION_TEACHING
+        ↔ QUESTION_AND_CLARIFICATION_LOOP
+        ↘ PREREQUISITE_BRANCH
+               ↓
+          PREREQUISITE_TEACHING
+               ↓
+          PREREQUISITE_MASTERY_GATE
+               ↓
+          RETURN_TO_PARENT_SECTION
+        ↓
+    SECTION_NOTE_SYNC
+        ↓
+    SECTION_MASTERY_GATE
+        ↓
+    LEARNER_CONFIRMATION
+        ↓
+    NEXT_SECTION
+    ```
 
-    ### Phase 2: Retrieve Relevant Prior Knowledge
-    Targeted search across the vault:
-    1. Search titles, aliases, tags, and contents for the topic and prerequisites.
-    2. Read the most relevant notes and inspect their local link neighborhoods.
-    3. Identify likely prerequisites, prior misconceptions, and known terminology.
+    ### Strict State Transition Invariants:
+    - Never jump from `SECTION_TEACHING` or `QUESTION_AND_CLARIFICATION_LOOP` to `NEXT_SECTION`.
+    - Never advance when:
+      1. Learner responds with "not sure", "I do not know", guesses, or leaves questions unanswered.
+      2. Learner has an open foundational question or unresolved misconception.
+      3. A prerequisite branch remains active/unresolved.
+      4. Section note additions have not been synchronized.
+      5. The learner has not explicitly agreed to advance.
+      6. A successor lab has not been authorized.
 
-    ### Phase 3: Multidimensional Diagnostic Probe
-    Open interactive Obsidian modal via `obsidian_prompt_modal`.
-    Probe across multidimensional axes:
-    1. Definition in learner's own words.
-    2. Causal model & prediction.
-    3. Example vs. nonexample discrimination.
-    4. Error or misconception detection.
-    5. Changed-assumption prediction.
-    6. Transfer to a nearby context.
-    7. Confidence calibration (allow "I do not know").
+    ---
 
-    Generate internal Diagnosis Table:
-    | Objective | Evidence | Current level | Misconception or gap | Instructional response |
-    | --- | --- | ---: | --- | --- |
+    ## 4. Teaching Loop for Every Section
 
-    ### Phase 4: Roadmap Alignment
-    Output structured Table of Contents / Roadmap in Pi terminal:
-    - List planned Concept Labs, capability objectives, core invariants, and mastery gates.
-    - Wait for user confirmation or questions before authoring notes.
+    ### Step 1: Read Before Teaching
+    Call `obsidian_get_learning_session`, read the active section, existing additions, linked prerequisite notes, and current mastery evidence.
 
-    ### Phase 5: Concept Immersion in Concept Lab
-    Author one Concept Lab at a time in the vault (`notes/<topic>-concept-lab.md`) using the 13-section structure and open via `obsidian_open_note`.
+    ### Step 2: Announce Active Section
+    Display in terminal:
+    ```text
+    Active section: <index> of 13 — <Section Title>
+    Current objective: <objective statement>
+    ```
 
-    ### Phase 6: Mastery Gate
-    Evaluate evidence across objectives (0: unprobed -> 5: critiqued/constructed).
-    Concept is mastered only when:
-    - Core objectives reach at least applied (level 3).
-    - At least one objective reaches transferred (level 4).
-    - No critical misconception remains unresolved.
-    - Learner discriminates matched nonexamples and analyzes changed assumptions.
+    ### Step 3: Teach in Small Interactive Units
+    Follow the 8-step causal sequence:
+    1. Concrete problem / dilemma.
+    2. Learner prediction probe.
+    3. Plain-language causal mechanism.
+    4. Worked example with numbers or state transitions.
+    5. Direct bridge connecting back to original abstract wording.
+    6. Formal rule / mathematical invariant.
+    7. Matched nonexample or contradiction.
+    8. Interactive retrieval / transfer probe.
 
-    ### Phase 7: Permanent Note Synthesis
-    Generate compressed permanent atomic note in `notes/<topic>-atomic-note.md` containing:
-    - Precise definition & core mechanism/invariant.
-    - Key assumptions & scope.
-    - One canonical example & one decisive nonexample.
-    - Failure boundary & semantic links.
-    - High-quality active retrieval prompts.
+    ### Step 4: Handle Learner Questions via Decision Engine
+    Classify every learner question into one of 6 decisions:
+    - **`EPHEMERAL_ANSWER`**: Minor curiosity or operational question. Answer in terminal without modifying the note.
+    - **`APPEND_TO_CURRENT_SECTION`**: Question exposes that the original section was too compressed. Produce a curated addition and call `obsidian_append_section_addition`.
+    - **`CREATE_PREREQUISITE_NOTE`**: A genuine missing mental model that cannot be resolved in one local paragraph. Call `obsidian_branch_prerequisite`.
+    - **`APPEND_CORRECTION`**: Dialogue or primary source check reveals an oversimplified or imprecise claim in the core. Append `> [!CORRECTION] Precision added after dialogue`.
+    - **`DEFERRED_TANGENT`**: Interesting future concept. Answer briefly, record in queue, return to active section.
+    - **`ALREADY_COVERED`**: Clarify where it exists in the note.
 
-    ### Phase 8: Spaced Review Queue
-    Schedule retrieval prompts at intervals: 0d (end of session), 1d, 3d, 7d, 21d.
+    ### Step 5: Synchronize Note Coverage Audit
+    Ask internally:
+    *If the learner closed Pi now and read only the Concept Lab and its links, could they reconstruct the understanding achieved in the dialogue?*
+    If not, synchronize all key analogies, explanations, and links using `obsidian_append_section_addition`.
+
+    ### Step 6: Evaluate Section Mastery
+    Record mastery evidence via `obsidian_record_mastery_evidence`.
+    Levels:
+    - `0: unprobed`
+    - `1: recognized`
+    - `2: explained`
+    - `3: applied`
+    - `4: transferred`
+    - `5: critiqued_constructed`
+
+    **Anti-Fake-Mastery Rule**:
+    - "not sure", "I do not know", empty, or guesses MUST NEVER result in `applied` (Level 3+).
+    - Multi-part questions must be scored independently per objective.
+    - Mastery level cannot increase without matching evidence records.
+
+    ### Step 7: Request Confirmation to Advance
+    State demonstrated evidence and ask:
+    ```text
+    You have demonstrated this section by:
+    - explaining <X> in your own words;
+    - correctly predicting <Y>;
+    - distinguishing <Z> from its near-miss.
+
+    There are no unresolved critical questions in this section.
+
+    May we move to Section <N+1>: <Title>?
+    ```
+
+    ---
+
+    ## 5. Prerequisite Branching Protocol
+    When an unlearned foundational concept is missing:
+    1. Call `obsidian_branch_prerequisite` with parent lab path, active section ID, and prerequisite concept slug (e.g. `why-distributed-ledgers-need-agreement`).
+    2. Teach the prerequisite lab section-by-section.
+    3. Pass prerequisite mastery gate.
+    4. Call `obsidian_return_from_prerequisite_branch` to return automatically to the exact parent section.
+    5. Re-explain the parent concept using the newly mastered prerequisite and re-test parent objective.
+
+    ---
+
+    ## 6. Anti-Premature Successor Creation
+    A successor Concept Lab (e.g. Sealevel) CANNOT be authored, opened, or taught until:
+    - Every section of the current lab has passed its mastery gate.
+    - All prerequisite branches are resolved.
+    - The active lab status in session is marked `mastered`.
+    - The learner explicitly approves starting the next module.
   '';
 }

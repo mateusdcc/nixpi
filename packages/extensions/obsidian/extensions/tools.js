@@ -14,6 +14,13 @@ import {
   getActionSubmissions,
   getMasteryLedger,
   updateMasteryLedger,
+  migrateNoteSections,
+  appendSectionAddition,
+  getLearningSession,
+  updateLearningSession,
+  branchToPrerequisite,
+  returnFromPrerequisiteBranch,
+  recordMasteryEvidence,
 } from "./client.js";
 import { readSettings, updateSettings } from "./settings.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
@@ -393,6 +400,175 @@ export function registerObsidianTools(pi) {
     },
     async execute(id, params) {
       const res = await updateMasteryLedger(params.concept_id, params.objectives);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_migrate_note_sections",
+    label: "Obsidian Migrate Note Sections",
+    description: "Migrate an existing Concept Lab note to include protected Layer A core markers and Layer B additions markers without changing any prose",
+    parameters: {
+      type: "object",
+      properties: {
+        note_path: { type: "string", description: "Relative or absolute path to the Concept Lab note" },
+      },
+      required: ["note_path"],
+    },
+    async execute(id, params) {
+      const res = await migrateNoteSections(params.note_path);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_append_section_addition",
+    label: "Obsidian Append Section Addition",
+    description: "Append a curated dialogue-derived learning addition (clarification, concrete model, precision correction, prerequisite link) to the protected additions block of a Concept Lab section",
+    parameters: {
+      type: "object",
+      properties: {
+        note_path: { type: "string", description: "Path to the Concept Lab note" },
+        section_id: { type: "string", description: "Section slug (e.g. formal-core, intuitive-causal-model)" },
+        addition_id: { type: "string", description: "Unique idempotent addition ID" },
+        addition_type: {
+          type: "string",
+          enum: ["clarification", "concrete_model", "analogy", "correction", "prerequisite_branch"],
+          description: "Category of addition",
+        },
+        source_question_id: { type: "string", description: "Question ID that exposed the gap" },
+        content: { type: "string", description: "Curated markdown content to append" },
+        linked_notes: { type: "array", items: { type: "string" }, description: "Optional list of linked note names" },
+      },
+      required: ["note_path", "section_id", "addition_id", "content"],
+    },
+    async execute(id, params) {
+      const res = await appendSectionAddition(params);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_get_learning_session",
+    label: "Obsidian Get Learning Session",
+    description: "Retrieve the active learning session state, active section, branch stack, and unresolved concepts",
+    parameters: { type: "object", properties: {} },
+    async execute() {
+      const res = await getLearningSession();
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_update_learning_session",
+    label: "Obsidian Update Learning Session",
+    description: "Update the active learning session (active_section_id, active_objective_id, current_state, etc.)",
+    parameters: {
+      type: "object",
+      properties: {
+        topic_id: { type: "string" },
+        lab_path: { type: "string" },
+        lab_status: { type: "string", enum: ["idle", "learning", "mastered"] },
+        active_section_id: { type: "string" },
+        active_objective_id: { type: "string" },
+        current_state: {
+          type: "string",
+          enum: [
+            "LAB_CREATED",
+            "SECTION_SELECTED",
+            "SECTION_TEACHING",
+            "QUESTION_AND_CLARIFICATION_LOOP",
+            "PREREQUISITE_BRANCH",
+            "PREREQUISITE_TEACHING",
+            "PREREQUISITE_MASTERY_GATE",
+            "RETURN_TO_PARENT_SECTION",
+            "SECTION_NOTE_SYNC",
+            "SECTION_MASTERY_GATE",
+            "LEARNER_CONFIRMATION",
+            "NEXT_SECTION",
+          ],
+        },
+        unresolved_questions: { type: "array", items: { type: "string" } },
+        misconceptions: { type: "array", items: { type: "string" } },
+      },
+    },
+    async execute(id, params) {
+      const res = await updateLearningSession(params);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_branch_prerequisite",
+    label: "Obsidian Branch Prerequisite",
+    description: "Pause the current section and branch to an independent prerequisite Concept Lab, adding a callout link in the parent lab",
+    parameters: {
+      type: "object",
+      properties: {
+        parent_lab: { type: "string", description: "Path to parent Concept Lab" },
+        triggered_from_section: { type: "string", description: "Active parent section ID" },
+        triggered_by_question: { type: "string", description: "Learner question or probe that exposed the gap" },
+        prerequisite_concept_id: { type: "string", description: "Slug for prerequisite concept" },
+        prerequisite_title: { type: "string", description: "Human-readable title" },
+        capability_target: { type: "string", description: "Prerequisite capability target description" },
+      },
+      required: ["parent_lab", "triggered_from_section", "prerequisite_concept_id"],
+    },
+    async execute(id, params) {
+      const res = await branchToPrerequisite(params);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_return_from_prerequisite_branch",
+    label: "Obsidian Return From Prerequisite Branch",
+    description: "Complete prerequisite lab and return to the exact parent section",
+    parameters: {
+      type: "object",
+      properties: {
+        prerequisite_concept_id: { type: "string" },
+      },
+      required: ["prerequisite_concept_id"],
+    },
+    async execute(id, params) {
+      const res = await returnFromPrerequisiteBranch(params);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_record_mastery_evidence",
+    label: "Obsidian Record Mastery Evidence",
+    description: "Record rigorous mastery evidence for an objective. Rejects fake mastery if answers contain 'not sure', 'I do not know', or lack causal explanation.",
+    parameters: {
+      type: "object",
+      properties: {
+        concept_id: { type: "string", description: "Concept ID" },
+        section_id: { type: "string", description: "Section ID" },
+        objective_id: { type: "string", description: "Objective ID" },
+        previous_level: { type: "number" },
+        new_level: { type: "number", description: "Target level: 0 (unprobed), 1 (recognized), 2 (explained), 3 (applied), 4 (transferred), 5 (critiqued_constructed)" },
+        evidence: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              question_id: { type: "string" },
+              answer_excerpt: { type: "string" },
+              evaluation: { type: "string" },
+              timestamp: { type: "string" },
+            },
+            required: ["question_id", "answer_excerpt", "evaluation"],
+          },
+          description: "List of concrete question answers proving mastery",
+        },
+        unresolved_misconceptions: { type: "array", items: { type: "string" } },
+      },
+      required: ["concept_id", "objective_id", "new_level", "evidence"],
+    },
+    async execute(id, params) {
+      const res = await recordMasteryEvidence(params);
       return respond(res);
     },
   });
