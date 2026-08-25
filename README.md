@@ -12,8 +12,9 @@
 - [Quick Start (Standalone)](#quick-start-standalone)
 - [Home Manager Integration](#home-manager-integration)
 - [Development Shell (`nix develop`)](#development-shell-nix-develop)
+- [Folder-Specific Profiles & `direnv`](#folder-specific-profiles--direnv)
 - [Managing Extensions](#managing-extensions)
-- [Managing Skills (e.g. Conventional Commits)](#managing-skills-eg-conventional-commits)
+- [Managing Skills (e.g. Conventional Commits, Socratic Tutor)](#managing-skills-eg-conventional-commits-socratic-tutor)
 - [Automatic Runtime Dependencies](#automatic-runtime-dependencies)
 - [Custom Providers (e.g. Antigravity)](#custom-providers-eg-antigravity)
 - [Secret Safety](#secret-safety)
@@ -208,6 +209,50 @@ Configure project-specific Pi environments alongside your compilers and linters:
 ```
 
 When you enter `nix develop`, running `pi` uses the project's pinned configuration.
+
+---
+
+## Folder-Specific Profiles & `direnv`
+
+Switching profiles automatically when entering specific folders (e.g. your Obsidian vault or learning directories) is seamless with `direnv`:
+
+### 1. In your target folder (e.g. `~/Vaults/my-vault`), add `.envrc`:
+```bash
+use flake
+```
+
+### 2. Add `flake.nix` importing the desired profile:
+```nix
+{
+  description = "Obsidian vault learning & research environment";
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpi.url = "github:mateusdcc/nixpi";
+  };
+  outputs = { self, nixpkgs, nixpi }:
+    let
+      system = "aarch64-darwin"; # or x86_64-linux, etc.
+      pkgs = nixpkgs.legacyPackages.${system};
+    in {
+      devShells.${system}.default = pkgs.mkShell {
+        packages = [
+          (nixpi.lib.makePi {
+            inherit pkgs;
+            modules = [
+              nixpi.piModules.profiles.learning
+              {
+                programs.pi.extensions.obsidian.defaultVault = "~/Vaults/my-vault";
+              }
+            ];
+          })
+          pkgs.glow
+        ];
+      };
+    };
+}
+```
+
+Whenever you `cd` into that directory, `direnv` automatically activates the customized `pi` binary with only that profile's extensions, skills, and tools. When you leave, it reverts to your default shell.
 
 ---
 
@@ -448,12 +493,18 @@ in {
  - `lib.mkPiPrompt { name, content, argumentHint }` - Prompt helper
  - `lib.mkPiTheme { name, colors }` - Theme helper
  - `piModules.default` - Core module aggregator
+ - `piModules.profiles.learning` - Learning and Obsidian vault profile module
+ - `piModules.profiles.legalResearch` - Legal research and empirical evidence profile module
+ - `piModules.skills.socraticTutor` - Socratic inquiry skill module
+ - `piModules.skills.feynmanTechnique` - Feynman technique skill module
+ - `piModules.skills.activeRecallNotes` - Obsidian active recall note synthesis skill module
+ - `piModules.skills.literatureDeepDive` - Literature deep-dive skill module
  - `piModules.skills.commit-style` - Conventional Commits skill module
  - `piModules.providers.antigravity` - Antigravity provider module
- - `packages.<system>.commit-style` - Conventional Commits skill package
+ - `packages.<system>.learning` - Preconfigured Learning Pi package
  - `packages.<system>.antigravity` - Antigravity provider package
  - `homeManagerModules.default` - Home Manager integration module
- - `templates.standalone`, `templates.home-manager`, `templates.devshell` - Ready-to-use templates
+ - `templates.standalone`, `templates.home-manager`, `templates.devshell`, `templates.learning` - Ready-to-use templates
 
 ---
 
