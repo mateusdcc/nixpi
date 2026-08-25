@@ -10,7 +10,10 @@ import {
   promptObsidianModal,
   showObsidianNotice,
   getQuizSubmissions,
-  sendQuizFeedback,
+  evaluateQuizSubmission,
+  getActionSubmissions,
+  getMasteryLedger,
+  updateMasteryLedger,
 } from "./client.js";
 import { readSettings, updateSettings } from "./settings.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
@@ -307,36 +310,93 @@ export function registerObsidianTools(pi) {
   pi.registerTool({
     name: "obsidian_get_quiz_submissions",
     label: "Obsidian Get Quiz Submissions",
-    description: "Retrieve quiz answers and user submissions sent from in-note quiz buttons for Pi verification",
+    description: "Retrieve quiz answers and user submissions from the learning queue for Pi evaluation",
     parameters: {
       type: "object",
-      properties: {},
+      properties: {
+        status: { type: "string", enum: ["pending", "completed"], description: "Optional status filter" },
+        concept_id: { type: "string", description: "Optional concept ID filter" },
+      },
     },
-    async execute() {
-      const res = await getQuizSubmissions();
+    async execute(id, params) {
+      const res = await getQuizSubmissions(params || {});
       return respond(res);
     },
   });
 
   pi.registerTool({
-    name: "obsidian_send_quiz_feedback",
-    label: "Obsidian Send Quiz Feedback",
-    description: "Send evaluation feedback and verification results back to the Obsidian vault and user",
+    name: "obsidian_evaluate_quiz_submission",
+    label: "Obsidian Evaluate Quiz Submission",
+    description: "Evaluate a learner's quiz submission against rubrics, providing inline feedback and updating the objective mastery ledger",
     parameters: {
       type: "object",
       properties: {
-        quizId: { type: "string", description: "ID of the quiz evaluated" },
-        title: { type: "string", description: "Quiz or section title" },
-        feedback: { type: "string", description: "Detailed verification and evaluation feedback" },
-        score: { type: "string", description: "Optional score or mastery rating" },
+        submission_id: { type: "string", description: "Submission ID or question ID" },
+        mastery_level: {
+          type: "string",
+          enum: ["unprobed", "recognized", "explained", "applied", "transferred", "critiqued_constructed"],
+          description: "Assessed mastery level for this objective",
+        },
+        assessment: { type: "string", description: "Concise overall evaluation summary" },
+        what_was_correct: { type: "string", description: "What reasoning was sound" },
+        missing_elements: { type: "string", description: "What was missing or imprecise" },
+        identified_misconceptions: { type: "string", description: "Identified misconception if present" },
+        corrective_lesson: { type: "string", description: "Targeted corrective explanation" },
+        follow_up_probe: { type: "string", description: "New isomorphic retry question" },
       },
-      required: ["feedback"],
+      required: ["submission_id", "mastery_level", "assessment"],
     },
     async execute(id, params) {
-      const res = await sendQuizFeedback(params);
+      const res = await evaluateQuizSubmission(params.submission_id, params);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_get_action_requests",
+    label: "Obsidian Get Action Requests",
+    description: "Retrieve section inquiries and questions submitted by the learner via in-note pi-action blocks",
+    parameters: { type: "object", properties: {} },
+    async execute() {
+      const res = await getActionSubmissions();
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_get_mastery_state",
+    label: "Obsidian Get Mastery State",
+    description: "Retrieve the objective-level mastery ledger across concepts and units",
+    parameters: {
+      type: "object",
+      properties: {
+        concept_id: { type: "string", description: "Optional concept ID to inspect" },
+      },
+    },
+    async execute(id, params) {
+      const res = await getMasteryLedger(params?.concept_id);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_update_mastery_state",
+    label: "Obsidian Update Mastery State",
+    description: "Update the objective-level mastery ledger for a concept",
+    parameters: {
+      type: "object",
+      properties: {
+        concept_id: { type: "string", description: "Concept ID" },
+        objectives: { type: "object", description: "Objective status mappings" },
+      },
+      required: ["concept_id", "objectives"],
+    },
+    async execute(id, params) {
+      const res = await updateMasteryLedger(params.concept_id, params.objectives);
       return respond(res);
     },
   });
 }
+
 
 

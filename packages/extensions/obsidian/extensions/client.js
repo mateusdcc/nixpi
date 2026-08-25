@@ -233,10 +233,15 @@ export async function showObsidianNotice(message, duration = 5000, clientConfig 
   return { success: false };
 }
 
-export async function getQuizSubmissions(clientConfig = {}) {
+export async function getQuizSubmissions(filter = {}, clientConfig = {}) {
   const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
   try {
-    const res = await executeHttpRequest(`${url}/quiz/pending`, {
+    const params = new URLSearchParams();
+    if (filter.status) params.append("status", filter.status);
+    if (filter.concept_id) params.append("concept_id", filter.concept_id);
+    const qs = params.toString() ? `?${params.toString()}` : "";
+
+    const res = await executeHttpRequest(`${url}/quiz/submissions${qs}`, {
       method: "GET",
       headers: buildHeaders(apiKey),
     });
@@ -249,10 +254,11 @@ export async function getQuizSubmissions(clientConfig = {}) {
   }
 }
 
-export async function sendQuizFeedback(feedbackPayload = {}, clientConfig = {}) {
+export async function evaluateQuizSubmission(subId, feedbackPayload = {}, clientConfig = {}) {
   const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
   try {
-    const res = await executeHttpRequest(`${url}/quiz/feedback`, {
+    const encodedId = encodeURIComponent(subId);
+    const res = await executeHttpRequest(`${url}/quiz/submissions/${encodedId}/feedback`, {
       method: "POST",
       headers: buildHeaders(apiKey),
       body: feedbackPayload,
@@ -265,5 +271,56 @@ export async function sendQuizFeedback(feedbackPayload = {}, clientConfig = {}) 
     return { success: false, error: err.message };
   }
 }
+
+export async function getActionSubmissions(clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/action/submissions`, {
+      method: "GET",
+      headers: buildHeaders(apiKey),
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function getMasteryLedger(conceptId = null, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const qs = conceptId ? `?concept_id=${encodeURIComponent(conceptId)}` : "";
+    const res = await executeHttpRequest(`${url}/learning/mastery${qs}`, {
+      method: "GET",
+      headers: buildHeaders(apiKey),
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updateMasteryLedger(conceptId, objectives = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/learning/mastery`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: { concept_id: conceptId, objectives },
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
 
 

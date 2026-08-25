@@ -16,6 +16,7 @@
     ./feynman-technique.nix
     ./active-recall-notes.nix
     ./literature-deep-dive.nix
+    ./deep-comprehension-engine.nix
     ./gifted-diagnostic-probe.nix
     ./paginated-atomic-notes.nix
     ./mermaid-diagrams.nix

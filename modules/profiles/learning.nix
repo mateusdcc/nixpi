@@ -26,6 +26,7 @@
       feynman-technique.enable = lib.mkDefault true;
       active-recall-notes.enable = lib.mkDefault true;
       literature-deep-dive.enable = lib.mkDefault true;
+      deep-comprehension-engine.enable = lib.mkDefault true;
       gifted-diagnostic-probe.enable = lib.mkDefault true;
       paginated-atomic-notes.enable = lib.mkDefault true;
       mermaid-diagrams.enable = lib.mkDefault true;

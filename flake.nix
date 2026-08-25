@@ -47,6 +47,7 @@
           feynmanTechnique = import ./modules/skills/feynman-technique.nix;
           activeRecallNotes = import ./modules/skills/active-recall-notes.nix;
           literatureDeepDive = import ./modules/skills/literature-deep-dive.nix;
+          deepComprehensionEngine = import ./modules/skills/deep-comprehension-engine.nix;
           giftedDiagnosticProbe = import ./modules/skills/gifted-diagnostic-probe.nix;
           paginatedAtomicNotes = import ./modules/skills/paginated-atomic-notes.nix;
           mermaidDiagrams = import ./modules/skills/mermaid-diagrams.nix;
@@ -214,6 +215,9 @@
             mkPiSkill = nixpiLib.mkPiSkill;
           };
           skill-literature-deep-dive = pkgs.callPackage ./packages/skills/literature-deep-dive {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-deep-comprehension-engine = pkgs.callPackage ./packages/skills/deep-comprehension-engine {
             mkPiSkill = nixpiLib.mkPiSkill;
           };
           skill-gifted-diagnostic-probe = pkgs.callPackage ./packages/skills/gifted-diagnostic-probe {

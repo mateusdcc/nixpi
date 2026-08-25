@@ -15,10 +15,10 @@ class DiagnosticProbeModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.style.maxHeight = "80vh";
+    contentEl.style.maxHeight = "85vh";
     contentEl.style.overflowY = "auto";
 
-    const header = contentEl.createEl("h2", { text: this.options.title || "Diagnostic Knowledge Probe" });
+    const header = contentEl.createEl("h2", { text: this.options.title || "Multidimensional Diagnostic Probe" });
     header.style.marginBottom = "8px";
 
     if (this.options.description) {
@@ -37,8 +37,8 @@ class DiagnosticProbeModal extends Modal {
       qBlock.style.borderRadius = "6px";
       qBlock.style.backgroundColor = "var(--background-secondary)";
 
-      const tierTag = q.tier ? `[${q.tier.toUpperCase()}] ` : "";
-      const qTitle = qBlock.createEl("div", { text: `${index + 1}. ${tierTag}${q.question}` });
+      const dimTag = q.dimension ? `[${q.dimension.toUpperCase()}] ` : (q.tier ? `[${q.tier.toUpperCase()}] ` : "");
+      const qTitle = qBlock.createEl("div", { text: `${index + 1}. ${dimTag}${q.question}` });
       qTitle.style.fontWeight = "bold";
       qTitle.style.marginBottom = "8px";
 
@@ -56,13 +56,18 @@ class DiagnosticProbeModal extends Modal {
           row.createSpan({ text: opt });
 
           radio.addEventListener("change", () => {
-            this.answers[fieldId] = opt;
+            if (!this.answers[fieldId]) this.answers[fieldId] = {};
+            if (typeof this.answers[fieldId] === "object") {
+              this.answers[fieldId].answer = opt;
+            } else {
+              this.answers[fieldId] = { answer: opt };
+            }
           });
         });
       } else {
         const textarea = qBlock.createEl("textarea", {
           attr: {
-            placeholder: q.placeholder || "Enter your technical analysis / response...",
+            placeholder: q.placeholder || "Enter your technical explanation / prediction (or write 'I do not know')...",
             rows: q.rows || 3,
           },
         });
@@ -72,9 +77,39 @@ class DiagnosticProbeModal extends Modal {
         textarea.style.resize = "vertical";
 
         textarea.addEventListener("input", (e) => {
-          this.answers[fieldId] = e.target.value;
+          if (!this.answers[fieldId]) this.answers[fieldId] = {};
+          if (typeof this.answers[fieldId] === "object") {
+            this.answers[fieldId].answer = e.target.value;
+          } else {
+            this.answers[fieldId] = { answer: e.target.value };
+          }
         });
       }
+
+      // Confidence selector
+      const confRow = qBlock.createEl("div");
+      confRow.style.marginTop = "8px";
+      confRow.style.fontSize = "12px";
+      confRow.style.color = "var(--text-muted)";
+      confRow.createSpan({ text: "Confidence: " });
+
+      ["High", "Medium", "Low", "Unsure / Guessing"].forEach((level) => {
+        const confLabel = confRow.createEl("label");
+        confLabel.style.marginRight = "10px";
+        confLabel.style.cursor = "pointer";
+        const confRadio = confLabel.createEl("input", { type: "radio", attr: { name: `${fieldId}_conf`, value: level.toLowerCase() } });
+        confRadio.style.marginRight = "3px";
+        confLabel.createSpan({ text: level });
+
+        confRadio.addEventListener("change", () => {
+          if (!this.answers[fieldId]) this.answers[fieldId] = {};
+          if (typeof this.answers[fieldId] === "object") {
+            this.answers[fieldId].confidence = level.toLowerCase();
+          } else {
+            this.answers[fieldId] = { answer: this.answers[fieldId], confidence: level.toLowerCase() };
+          }
+        });
+      });
     });
 
     const btnRow = form.createEl("div");
@@ -121,11 +156,36 @@ module.exports = class PiBridgePlugin extends Plugin {
     }
   }
 
+  getLearningDir() {
+    const basePath = this.app.vault.adapter.basePath || process.cwd();
+    const learningDir = path.join(basePath, ".pi", "learning");
+    fs.mkdirSync(learningDir, { recursive: true });
+    return learningDir;
+  }
+
+  readJsonFile(filename, defaultVal = []) {
+    const filePath = path.join(this.getLearningDir(), filename);
+    if (fs.existsSync(filePath)) {
+      try { return JSON.parse(fs.readFileSync(filePath, "utf-8")); } catch {}
+    }
+    return defaultVal;
+  }
+
+  writeJsonFile(filename, data) {
+    const filePath = path.join(this.getLearningDir(), filename);
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+  }
+
   registerCodeBlockProcessors() {
     // 1. In-Note Quiz Processor
     this.registerMarkdownCodeBlockProcessor("pi-quiz", (source, el, ctx) => {
-      const config = this.parseSimpleYaml(source);
+      const config = this.parseConfig(source);
       el.empty();
+
+      const qId = config.question_id || config.id || `quiz_${Date.now()}`;
+      const conceptId = config.concept_id || "general";
+      const objId = config.objective_id || "general";
+      const qFamily = (config.question_family || "probing").toUpperCase();
 
       const card = el.createEl("div", { cls: "pi-quiz-container" });
       card.style.border = "1px solid var(--interactive-accent)";
@@ -134,147 +194,308 @@ module.exports = class PiBridgePlugin extends Plugin {
       card.style.margin = "14px 0";
       card.style.backgroundColor = "var(--background-secondary)";
 
-      const badge = card.createEl("div", { text: `[PI QUIZ] ${config.title || config.id || "Knowledge Check"}` });
+      // Header row with family badge & submission status
+      const headerRow = card.createEl("div");
+      headerRow.style.display = "flex";
+      headerRow.style.justifyContent = "space-between";
+      headerRow.style.alignItems = "center";
+      headerRow.style.marginBottom = "6px";
+
+      const badge = headerRow.createEl("div", { text: `[PI QUIZ: ${qFamily}] ${config.title || qId}` });
       badge.style.fontSize = "11px";
       badge.style.fontWeight = "bold";
       badge.style.color = "var(--interactive-accent)";
       badge.style.textTransform = "uppercase";
-      badge.style.marginBottom = "6px";
 
-      const questionText = card.createEl("div", { text: config.question || config.prompt || "Answer the following question:" });
+      const statusBadge = headerRow.createEl("span", { text: "Unanswered" });
+      statusBadge.style.fontSize = "11px";
+      statusBadge.style.color = "var(--text-muted)";
+
+      // Question text
+      const questionText = card.createEl("div", { text: config.question || config.prompt || "Answer the following probe:" });
       questionText.style.fontWeight = "600";
       questionText.style.marginBottom = "10px";
       questionText.style.lineHeight = "1.4";
 
-      const textarea = card.createEl("textarea", {
-        attr: {
-          placeholder: config.placeholder || "Type your analysis / solution here and click Submit to send to Pi...",
-          rows: config.rows ? parseInt(config.rows, 10) : 4,
-        },
-      });
-      textarea.style.width = "100%";
-      textarea.style.boxSizing = "border-box";
-      textarea.style.marginBottom = "10px";
-      textarea.style.borderRadius = "4px";
-      textarea.style.resize = "vertical";
+      // Input area (choice vs text)
+      let currentAnswer = "";
+      let currentConfidence = "medium";
+      let textarea = null;
 
+      if (config.answer_mode === "choice" && Array.isArray(config.options) && config.options.length > 0) {
+        const choiceContainer = card.createEl("div");
+        choiceContainer.style.marginBottom = "10px";
+        config.options.forEach((opt) => {
+          const row = choiceContainer.createEl("label");
+          row.style.display = "block";
+          row.style.margin = "4px 0";
+          row.style.cursor = "pointer";
+
+          const radio = row.createEl("input", { type: "radio", attr: { name: `quiz_${qId}`, value: opt } });
+          radio.style.marginRight = "6px";
+          row.createSpan({ text: opt });
+
+          radio.addEventListener("change", () => {
+            currentAnswer = opt;
+          });
+        });
+      } else {
+        textarea = card.createEl("textarea", {
+          attr: {
+            placeholder: config.placeholder || "Type your explanation, prediction, or derivation here...",
+            rows: config.rows ? parseInt(config.rows, 10) : 4,
+          },
+        });
+        textarea.style.width = "100%";
+        textarea.style.boxSizing = "border-box";
+        textarea.style.marginBottom = "10px";
+        textarea.style.borderRadius = "4px";
+        textarea.style.resize = "vertical";
+
+        textarea.addEventListener("input", (e) => {
+          currentAnswer = e.target.value;
+        });
+      }
+
+      // Confidence selector
+      const confRow = card.createEl("div");
+      confRow.style.display = "flex";
+      confRow.style.alignItems = "center";
+      confRow.style.gap = "8px";
+      confRow.style.marginBottom = "10px";
+      confRow.style.fontSize = "11px";
+      confRow.style.color = "var(--text-muted)";
+      confRow.createSpan({ text: "Confidence: " });
+
+      ["High", "Medium", "Low"].forEach((lvl) => {
+        const lbl = confRow.createEl("label");
+        lbl.style.cursor = "pointer";
+        const r = lbl.createEl("input", { type: "radio", attr: { name: `conf_${qId}`, value: lvl.toLowerCase() } });
+        r.style.marginRight = "3px";
+        if (lvl.toLowerCase() === "medium") r.checked = true;
+        lbl.createSpan({ text: lvl });
+
+        r.addEventListener("change", () => {
+          currentConfidence = lvl.toLowerCase();
+        });
+      });
+
+      // Feedback container (durable inline)
+      const feedbackBox = card.createEl("div");
+      feedbackBox.style.display = "none";
+      feedbackBox.style.marginTop = "10px";
+      feedbackBox.style.padding = "10px";
+      feedbackBox.style.borderRadius = "4px";
+      feedbackBox.style.backgroundColor = "var(--background-primary)";
+      feedbackBox.style.border = "1px solid var(--background-modifier-border)";
+
+      // Check existing submission and feedback
+      const submissions = this.readJsonFile("submissions.json", []);
+      const existing = submissions.filter((s) => s.question_id === qId).pop();
+      if (existing) {
+        if (existing.answer && textarea) textarea.value = existing.answer;
+        currentAnswer = existing.answer || "";
+        statusBadge.setText(existing.status === "completed" ? "Evaluated" : "Queued for evaluation when Pi is available");
+        statusBadge.style.color = existing.status === "completed" ? "var(--color-green)" : "var(--color-yellow)";
+
+        if (existing.feedback) {
+          feedbackBox.style.display = "block";
+          feedbackBox.empty();
+          feedbackBox.createEl("div", { text: `[Evaluation Result: ${existing.feedback.mastery_level || "Recorded"}]`, cls: "pi-feedback-header" });
+          feedbackBox.createEl("p", { text: existing.feedback.assessment || existing.feedback.comment || "" });
+        }
+      }
+
+      // Button Row
       const btnRow = card.createEl("div");
       btnRow.style.display = "flex";
       btnRow.style.justifyContent = "space-between";
       btnRow.style.alignItems = "center";
 
-      const statusSpan = btnRow.createEl("span", { text: "" });
-      statusSpan.style.fontSize = "12px";
-      statusSpan.style.color = "var(--text-muted)";
-
       const submitBtn = btnRow.createEl("button", {
-        text: "Send to Pi for Verification",
+        text: existing && existing.status === "completed" ? "Resubmit Answer" : "Submit Answer for Evaluation",
         cls: "mod-cta",
       });
 
       submitBtn.addEventListener("click", async () => {
-        const answer = textarea.value.trim();
-        if (!answer) {
+        const val = textarea ? textarea.value.trim() : currentAnswer.trim();
+        if (!val) {
           new Notice("Please enter an answer before submitting.");
           return;
         }
 
         submitBtn.disabled = true;
-        submitBtn.setText("Sending to Pi...");
+        submitBtn.setText("Submitting...");
+
+        const subId = `sub_${conceptId}_${qId}_${Date.now()}`;
+        const payload = {
+          submission_id: subId,
+          note_path: ctx.sourcePath || "",
+          concept_id: conceptId,
+          objective_id: objId,
+          question_id: qId,
+          question_family: config.question_family || "probing",
+          question: config.question || "",
+          answer: val,
+          confidence: currentConfidence,
+          status: "pending",
+          timestamp: new Date().toISOString(),
+        };
 
         try {
-          const payload = {
-            notePath: ctx.sourcePath || "",
-            quizId: config.id || `quiz-${Date.now()}`,
-            title: config.title || "",
-            question: config.question || "",
-            answer: answer,
-            timestamp: new Date().toISOString(),
-          };
-
-          const res = await fetch(`http://127.0.0.1:${this.port}/quiz/submit`, {
+          const res = await fetch(`http://127.0.0.1:${this.port}/quiz/submissions`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
 
           if (res.ok) {
-            submitBtn.setText("Answer Sent to Pi");
-            submitBtn.style.backgroundColor = "var(--color-green)";
-            statusSpan.setText("Queued for Pi verification");
-            new Notice("Quiz response submitted to Pi for verification.");
+            submitBtn.disabled = false;
+            submitBtn.setText("Answer Submitted");
+            statusBadge.setText("Queued for evaluation when Pi is available");
+            statusBadge.style.color = "var(--color-yellow)";
+            new Notice("Quiz answer queued for Pi evaluation.");
           } else {
             throw new Error(`Server returned ${res.status}`);
           }
         } catch (err) {
           submitBtn.disabled = false;
-          submitBtn.setText("Retry Sending to Pi");
-          new Notice(`Failed to send quiz to Pi: ${err.message}`);
+          submitBtn.setText("Retry Submission");
+          new Notice(`Submission failed: ${err.message}`);
         }
       });
     });
 
-    // 2. In-Note Section Action / Query Processor
+    // 2. In-Note Section Action Processor (Interactive Inquiries)
     this.registerMarkdownCodeBlockProcessor("pi-action", (source, el, ctx) => {
-      const config = this.parseSimpleYaml(source);
+      const config = this.parseConfig(source);
       el.empty();
 
-      const actionBox = el.createEl("div");
-      actionBox.style.margin = "10px 0";
-      actionBox.style.display = "flex";
-      actionBox.style.alignItems = "center";
-      actionBox.style.gap = "8px";
+      const box = el.createEl("div");
+      box.style.border = "1px dashed var(--background-modifier-border)";
+      box.style.borderRadius = "6px";
+      box.style.padding = "10px";
+      box.style.margin = "10px 0";
+      box.style.backgroundColor = "var(--background-secondary-alt)";
 
-      const btn = actionBox.createEl("button", {
-        text: config.label || "Ask Pi About This Section",
+      const titleRow = box.createEl("div");
+      titleRow.style.fontSize = "12px";
+      titleRow.style.fontWeight = "bold";
+      titleRow.style.color = "var(--text-muted)";
+      titleRow.style.marginBottom = "6px";
+      titleRow.setText(`Ask Pi About: ${config.section || config.label || "This Section"}`);
+
+      const input = box.createEl("textarea", {
+        attr: {
+          placeholder: config.placeholder || "Type your specific question or request a deeper derivation...",
+          rows: 2,
+        },
       });
-      btn.style.fontSize = "12px";
-      btn.style.padding = "4px 10px";
+      input.style.width = "100%";
+      input.style.boxSizing = "border-box";
+      input.style.marginBottom = "8px";
+      input.style.fontSize = "12px";
 
-      const infoSpan = actionBox.createEl("span", {
-        text: config.section ? `Section: ${config.section}` : "",
-      });
-      infoSpan.style.fontSize = "11px";
-      infoSpan.style.color = "var(--text-muted)";
+      const btnRow = box.createEl("div");
+      btnRow.style.display = "flex";
+      btnRow.style.justifyContent = "space-between";
+      btnRow.style.alignItems = "center";
 
-      btn.addEventListener("click", async () => {
+      const statusSpan = btnRow.createEl("span", { text: "" });
+      statusSpan.style.fontSize = "11px";
+      statusSpan.style.color = "var(--text-muted)";
+
+      const askBtn = btnRow.createEl("button", { text: config.label || "Send Question to Pi" });
+      askBtn.style.fontSize = "12px";
+
+      askBtn.addEventListener("click", async () => {
+        const text = input.value.trim();
+        if (!text) {
+          new Notice("Please enter a question.");
+          return;
+        }
+
+        askBtn.disabled = true;
+        askBtn.setText("Sending...");
+
+        const payload = {
+          action_id: `act_${Date.now()}`,
+          note_path: ctx.sourcePath || "",
+          section: config.section || "",
+          question: text,
+          status: "pending",
+          timestamp: new Date().toISOString(),
+        };
+
         try {
-          const payload = {
-            notePath: ctx.sourcePath || "",
-            action: config.label || "Ask Pi",
-            prompt: config.prompt || "",
-            section: config.section || "",
-            timestamp: new Date().toISOString(),
-          };
-
-          await fetch(`http://127.0.0.1:${this.port}/action/submit`, {
+          const res = await fetch(`http://127.0.0.1:${this.port}/action/submissions`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),
           });
 
-          new Notice(`Action sent to Pi: ${config.label || "Query"}`);
+          if (res.ok) {
+            askBtn.disabled = false;
+            askBtn.setText("Question Sent");
+            statusSpan.setText("Queued for Pi response");
+            new Notice("Question sent to Pi.");
+          } else {
+            throw new Error(`Server returned ${res.status}`);
+          }
         } catch (err) {
-          new Notice(`Action failed: ${err.message}`);
+          askBtn.disabled = false;
+          askBtn.setText("Retry");
+          new Notice(`Failed: ${err.message}`);
         }
       });
     });
   }
 
-  parseSimpleYaml(str) {
+  parseConfig(str) {
     const out = {};
     const lines = str.split("\n");
+    let currentKey = null;
+    let inArray = false;
+
     for (const line of lines) {
       const trimmed = line.trim();
       if (!trimmed || trimmed.startsWith("#")) continue;
+
+      if (trimmed.startsWith("- ") && currentKey && inArray) {
+        if (!Array.isArray(out[currentKey])) out[currentKey] = [];
+        let val = trimmed.substring(2).trim();
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.substring(1, val.length - 1);
+        }
+        out[currentKey].push(val);
+        continue;
+      }
+
       const idx = trimmed.indexOf(":");
       if (idx !== -1) {
         const k = trimmed.substring(0, idx).trim();
         let v = trimmed.substring(idx + 1).trim();
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-          v = v.substring(1, v.length - 1);
+
+        if (v === "") {
+          currentKey = k;
+          inArray = true;
+          out[k] = [];
+        } else {
+          inArray = false;
+          currentKey = k;
+          if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+            v = v.substring(1, v.length - 1);
+          }
+          if (v.startsWith("[") && v.endsWith("]")) {
+            try {
+              out[k] = JSON.parse(v);
+            } catch {
+              out[k] = v.substring(1, v.length - 1).split(",").map((s) => s.trim().replace(/^['"]|['"]$/g, ""));
+            }
+          } else {
+            out[k] = v;
+          }
         }
-        out[k] = v;
       }
     }
     return out;
@@ -330,10 +551,22 @@ module.exports = class PiBridgePlugin extends Plugin {
       new Notice(body.message || params.get("message") || "", body.duration || 5000);
       return { success: true };
     }
-    if (pathname === "/quiz/submit") return this.handleQuizSubmit(body);
-    if (pathname === "/quiz/pending" || pathname === "/quiz/submissions") return this.handleQuizPending();
-    if (pathname === "/quiz/feedback") return this.handleQuizFeedback(body);
-    if (pathname === "/action/submit") return this.handleActionSubmit(body);
+
+    // Queue & Submissions API
+    if (pathname === "/quiz/submissions" && method === "POST") return this.handleQuizSubmissionPost(body);
+    if (pathname === "/quiz/submissions" && method === "GET") return this.handleQuizSubmissionList(params);
+    if (pathname.startsWith("/quiz/submissions/") && pathname.endsWith("/feedback") && method === "POST") {
+      const subId = pathname.split("/")[3];
+      return this.handleQuizSubmissionFeedback(subId, body);
+    }
+
+    // Section Inquiries API
+    if (pathname === "/action/submissions" && method === "POST") return this.handleActionSubmissionPost(body);
+    if (pathname === "/action/submissions" && method === "GET") return this.handleActionSubmissionList(params);
+
+    // Mastery Ledger API
+    if (pathname === "/learning/mastery" && method === "GET") return this.handleMasteryGet(params);
+    if (pathname === "/learning/mastery" && method === "POST") return this.handleMasteryPost(body);
 
     if (pathname === "/screenshot") return this.handleScreenshot(body, params);
     if (pathname === "/layout" || pathname === "/workspace/layout") return this.handleLayout();
@@ -351,65 +584,113 @@ module.exports = class PiBridgePlugin extends Plugin {
     return { status: "ok", vault: this.app.vault.getName(), commandsCount: cmdCount };
   }
 
-  handleQuizSubmit(body) {
-    const basePath = this.app.vault.adapter.basePath || process.cwd();
-    const piDir = path.join(basePath, ".pi");
-    fs.mkdirSync(piDir, { recursive: true });
-    const submissionsFile = path.join(piDir, "quiz_submissions.json");
+  handleQuizSubmissionPost(body) {
+    const list = this.readJsonFile("submissions.json", []);
+    const subId = body.submission_id || `sub_${Date.now()}`;
+    const entry = {
+      submission_id: subId,
+      note_path: body.note_path || "",
+      concept_id: body.concept_id || "",
+      objective_id: body.objective_id || "",
+      question_id: body.question_id || "",
+      question_family: body.question_family || "probing",
+      question: body.question || "",
+      answer: body.answer || "",
+      confidence: body.confidence || "medium",
+      status: "pending",
+      submitted_at: new Date().toISOString(),
+    };
 
-    let list = [];
-    if (fs.existsSync(submissionsFile)) {
-      try { list = JSON.parse(fs.readFileSync(submissionsFile, "utf-8")); } catch {}
+    // Idempotent replace if same question_id and pending
+    const existingIdx = list.findIndex((s) => s.question_id === entry.question_id && s.status === "pending");
+    if (existingIdx !== -1) {
+      list[existingIdx] = entry;
+    } else {
+      list.push(entry);
     }
-    list.push({ ...body, receivedAt: new Date().toISOString() });
-    fs.writeFileSync(submissionsFile, JSON.stringify(list, null, 2), "utf-8");
-    return { success: true, count: list.length, latest: body };
+    this.writeJsonFile("submissions.json", list);
+    return { success: true, submission_id: subId, status: "pending" };
   }
 
-  handleQuizPending() {
-    const basePath = this.app.vault.adapter.basePath || process.cwd();
-    const submissionsFile = path.join(basePath, ".pi", "quiz_submissions.json");
-    if (fs.existsSync(submissionsFile)) {
-      try {
-        const list = JSON.parse(fs.readFileSync(submissionsFile, "utf-8"));
-        return { success: true, submissions: list };
-      } catch {}
-    }
-    return { success: true, submissions: [] };
+  handleQuizSubmissionList(params) {
+    const list = this.readJsonFile("submissions.json", []);
+    const statusFilter = params.get("status");
+    const conceptFilter = params.get("concept_id");
+
+    let filtered = list;
+    if (statusFilter) filtered = filtered.filter((s) => s.status === statusFilter);
+    if (conceptFilter) filtered = filtered.filter((s) => s.concept_id === conceptFilter);
+
+    return { success: true, submissions: filtered };
   }
 
-  handleQuizFeedback(body) {
-    const basePath = this.app.vault.adapter.basePath || process.cwd();
-    const piDir = path.join(basePath, ".pi");
-    fs.mkdirSync(piDir, { recursive: true });
-    const feedbackFile = path.join(piDir, "quiz_feedback.json");
+  handleQuizSubmissionFeedback(subId, body) {
+    const list = this.readJsonFile("submissions.json", []);
+    const item = list.find((s) => s.submission_id === subId || s.question_id === subId);
+    if (!item) throw new Error(`Submission not found: ${subId}`);
 
-    let list = [];
-    if (fs.existsSync(feedbackFile)) {
-      try { list = JSON.parse(fs.readFileSync(feedbackFile, "utf-8")); } catch {}
-    }
-    list.push({ ...body, feedbackAt: new Date().toISOString() });
-    fs.writeFileSync(feedbackFile, JSON.stringify(list, null, 2), "utf-8");
+    item.status = "completed";
+    item.feedback = {
+      mastery_level: body.mastery_level || "applied",
+      assessment: body.assessment || body.feedback || "",
+      what_was_correct: body.what_was_correct || "",
+      missing_elements: body.missing_elements || "",
+      identified_misconceptions: body.identified_misconceptions || "",
+      corrective_lesson: body.corrective_lesson || "",
+      follow_up_probe: body.follow_up_probe || "",
+      evaluated_at: new Date().toISOString(),
+    };
+    this.writeJsonFile("submissions.json", list);
 
-    if (body.message || body.feedback) {
-      new Notice(`[Pi Verification] ${body.title || "Quiz Evaluated"}: ${body.feedback || body.message}`, 8000);
+    // Update mastery ledger
+    if (item.concept_id && item.objective_id) {
+      const mastery = this.readJsonFile("mastery.json", {});
+      if (!mastery[item.concept_id]) mastery[item.concept_id] = {};
+      mastery[item.concept_id][item.objective_id] = {
+        level: body.mastery_level || "applied",
+        last_updated: new Date().toISOString(),
+      };
+      this.writeJsonFile("mastery.json", mastery);
     }
-    return { success: true };
+
+    new Notice(`[Evaluation Completed] ${item.question_id}: ${body.mastery_level || "Recorded"}`);
+    return { success: true, submission_id: subId, item };
   }
 
-  handleActionSubmit(body) {
-    const basePath = this.app.vault.adapter.basePath || process.cwd();
-    const piDir = path.join(basePath, ".pi");
-    fs.mkdirSync(piDir, { recursive: true });
-    const actionsFile = path.join(piDir, "action_requests.json");
+  handleActionSubmissionPost(body) {
+    const list = this.readJsonFile("action_requests.json", []);
+    const entry = {
+      action_id: body.action_id || `act_${Date.now()}`,
+      note_path: body.note_path || "",
+      section: body.section || "",
+      question: body.question || "",
+      status: "pending",
+      submitted_at: new Date().toISOString(),
+    };
+    list.push(entry);
+    this.writeJsonFile("action_requests.json", list);
+    return { success: true, action_id: entry.action_id };
+  }
 
-    let list = [];
-    if (fs.existsSync(actionsFile)) {
-      try { list = JSON.parse(fs.readFileSync(actionsFile, "utf-8")); } catch {}
-    }
-    list.push({ ...body, receivedAt: new Date().toISOString() });
-    fs.writeFileSync(actionsFile, JSON.stringify(list, null, 2), "utf-8");
-    return { success: true, count: list.length, latest: body };
+  handleActionSubmissionList(params) {
+    const list = this.readJsonFile("action_requests.json", []);
+    return { success: true, actions: list };
+  }
+
+  handleMasteryGet(params) {
+    const mastery = this.readJsonFile("mastery.json", {});
+    const concept = params.get("concept_id");
+    if (concept) return { success: true, concept_id: concept, objectives: mastery[concept] || {} };
+    return { success: true, mastery };
+  }
+
+  handleMasteryPost(body) {
+    const mastery = this.readJsonFile("mastery.json", {});
+    const conceptId = body.concept_id;
+    if (!conceptId) throw new Error("Missing concept_id");
+    mastery[conceptId] = { ...mastery[conceptId], ...body.objectives };
+    this.writeJsonFile("mastery.json", mastery);
+    return { success: true, concept_id: conceptId, objectives: mastery[conceptId] };
   }
 
   async handleScreenshot(body, params) {

@@ -5,35 +5,28 @@
 
 mkPiSkill {
   name = "mermaid-diagrams";
-  description = "High-precision Mermaid diagram architecture and isolated subagent validation for complex conceptual workflows.";
+  description = "Purpose-driven visual architecture and semantic validation: diagrams are conditional on pedagogical clarity and followed by mandatory tracing questions.";
   runtimePackages = [
     pkgs.mermaid-cli
   ];
   content = ''
-    # Mermaid Diagram Generation & Subagent Validation Protocol
+    # Purpose-Driven Visual Architecture & Diagram Protocol
 
     ## Objective
-    Produce pixel-perfect, syntactically valid Mermaid diagrams for conceptual notes and architecture guides while keeping the main conversation context token-efficient.
+    Provide crisp, semantically meaningful visual models only when they genuinely clarify causal structure or state transitions better than prose or worked traces.
 
-    ## Subagent Isolation Strategy
-    To avoid token bloat and context window pollution in the main agent:
-    1. **Delegate Diagram Construction**:
-       - When creating or refining complex diagrams, delegate the generation to a specialized lightweight subagent (or isolated tool prompt) whose ONLY role is constructing and syntax-checking the Mermaid code.
-       - The subagent focuses strictly on visual graph topology and syntax validity without carrying conversational history.
-    2. **Syntax Validation**:
-       - Verify syntax with `mmdc` (Mermaid CLI):
-         ```bash
-         echo '<mermaid-code>' | mmdc -i - -o /dev/null
-         ```
-       - Ensure all node labels containing special characters (parentheses, brackets, colons) are strictly quoted: e.g. `id["Label (Extra Info)"]`.
-    3. **Return Clean Block**:
-       - Return only the final verified ```mermaid ... ``` markdown block to be inserted into the note.
+    ## Conditional Diagram Selection Rule
+    Select visual representations strictly based on pedagogical purpose:
+    - **State Transitions**: `stateDiagram-v2` showing transitions, guards, and terminal states.
+    - **Protocol / Message Interactions**: `sequenceDiagram` showing causal message ordering, timeouts, and partitions.
+    - **Algorithmic Decisions**: `flowchart TD` showing branch conditions and invariant checks.
+    - **Exact Comparisons**: Markdown table (prefer tables over complex diagrams when comparing feature matrices or dimensions).
+    - **Temporal / Epoch Shifts**: Timeline or sequential worked trace.
+    - **Omit Diagram**: When a small step-by-step mathematical derivation or code execution trace is clearer than a diagram.
 
-    ## Supported Diagram Types
-    - **Concept Map & Flow**: `flowchart TD` or `flowchart LR` with styled subgraphs.
-    - **State Transitions**: `stateDiagram-v2` with clear transitions, composite states, and guards.
-    - **Protocol Flow**: `sequenceDiagram` with notes, activation boxes, and parallel blocks (`par`).
-    - **Domain Entities**: `classDiagram` or `erDiagram` showing cardinality and types.
-    - **Cognitive Tree**: `mindmap` for hierarchical idea decomposition.
+    ## Semantic Validation & Tracing Requirement
+    1. **Syntax Validation**: Verify syntax with `mmdc` CLI. Ensure all node labels containing special characters are strictly quoted.
+    2. **Mandatory Follow-Up Tracing Question**:
+       EVERY diagram included in a Concept Lab MUST be immediately followed by an interactive `pi-quiz` question requiring the learner to trace a path, predict a state transition, or analyze a boundary condition on that specific diagram.
   '';
 }
