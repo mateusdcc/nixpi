@@ -29,6 +29,7 @@
         profiles = {
           minimal = import ./modules/profiles/minimal.nix;
           research = import ./modules/profiles/research.nix;
+          learning = import ./modules/profiles/learning.nix;
           legalResearch = import ./modules/profiles/legal-research.nix;
         };
         extensions = {
@@ -41,6 +42,11 @@
         };
         skills = {
           commit-style = import ./modules/skills/commit-style.nix;
+          obsidianScreenshot = import ./modules/skills/obsidian-screenshot.nix;
+          socraticTutor = import ./modules/skills/socratic-tutor.nix;
+          feynmanTechnique = import ./modules/skills/feynman-technique.nix;
+          activeRecallNotes = import ./modules/skills/active-recall-notes.nix;
+          literatureDeepDive = import ./modules/skills/literature-deep-dive.nix;
           legalPainDiscovery = import ./modules/skills/legal-pain-discovery.nix;
           voiceOfCustomerMining = import ./modules/skills/voice-of-customer-mining.nix;
           evidenceDeduplication = import ./modules/skills/evidence-deduplication.nix;
@@ -72,6 +78,10 @@
         devshell = {
           path = ./templates/devshell;
           description = "Project-specific development shell with Pi";
+        };
+        learning = {
+          path = ./templates/learning;
+          description = "Learning & Obsidian vault development shell with Pi";
         };
       };
 
@@ -140,6 +150,25 @@
             ];
           };
 
+          learning = nixpiLib.makePi {
+            inherit pkgs;
+            modules = [
+              self.piModules.profiles.learning
+              (
+                { config, ... }:
+                {
+                  programs.pi = {
+                    providers.antigravity.enable = true;
+                    settings = {
+                      defaultProvider = config.programs.pi.providers.antigravity;
+                      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
+                    };
+                  };
+                }
+              )
+            ];
+          };
+
           pi-unwrapped = pkgs.pi-coding-agent;
           echo = pkgs.callPackage ./packages/extensions/echo { mkPiExtension = mkExt; };
           ripgrep-search = pkgs.callPackage ./packages/extensions/ripgrep-search {
@@ -169,6 +198,19 @@
             mkPiSkill = nixpiLib.mkPiSkill;
           };
           skill-obsidian-screenshot = pkgs.callPackage ./packages/skills/obsidian-screenshot {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+
+          skill-socratic-tutor = pkgs.callPackage ./packages/skills/socratic-tutor {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-feynman-technique = pkgs.callPackage ./packages/skills/feynman-technique {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-active-recall-notes = pkgs.callPackage ./packages/skills/active-recall-notes {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-literature-deep-dive = pkgs.callPackage ./packages/skills/literature-deep-dive {
             mkPiSkill = nixpiLib.mkPiSkill;
           };
 

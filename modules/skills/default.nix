@@ -12,5 +12,9 @@
     ./brazil-localization-test.nix
     ./opportunity-scoring.nix
     ./product-opportunity-report.nix
+    ./socratic-tutor.nix
+    ./feynman-technique.nix
+    ./active-recall-notes.nix
+    ./literature-deep-dive.nix
   ];
 }
