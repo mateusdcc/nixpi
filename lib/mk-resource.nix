@@ -20,7 +20,7 @@
         src = pkgs.writeTextDir "SKILL.md" ''
           ---
           name: ${name}
-          description: ${description}
+          description: ${builtins.toJSON description}
           ---
           ${content}
         '';
@@ -53,7 +53,7 @@
         if description != "" || argumentHint != null then
           ''
             ---
-            ${lib.optionalString (description != "") "description: ${description}\n"}${
+            ${lib.optionalString (description != "") "description: ${builtins.toJSON description}\n"}${
               lib.optionalString (argumentHint != null) "argument-hint: \"${argumentHint}\"\n"
             }---
           ''

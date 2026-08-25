@@ -1,7 +1,3 @@
----
-name: obsidian-screenshot
-description: Capture native in-app Obsidian screenshots without OS screen recording permissions
----
 # Obsidian In-App Screenshot Skill
 
 ## Purpose
