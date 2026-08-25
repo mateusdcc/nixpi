@@ -7,6 +7,8 @@ import {
   openObsidianSettings,
   getObsidianLayout,
   takeObsidianScreenshot,
+  promptObsidianModal,
+  showObsidianNotice,
 } from "./client.js";
 import { readSettings, updateSettings } from "./settings.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
@@ -245,4 +247,59 @@ export function registerObsidianTools(pi) {
       return respond(res);
     },
   });
+
+  pi.registerTool({
+    name: "obsidian_prompt_modal",
+    label: "Obsidian Prompt Modal",
+    description: "Open an interactive quiz or knowledge probe modal directly inside Obsidian and await user responses",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Modal title heading" },
+        description: { type: "string", description: "Modal instructions" },
+        submitText: { type: "string", description: "Button submit text" },
+        questions: {
+          type: "array",
+          description: "List of questions (easy, medium, hard)",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              tier: { type: "string", enum: ["easy", "medium", "hard"] },
+              type: { type: "string", enum: ["choice", "open"] },
+              question: { type: "string" },
+              options: { type: "array", items: { type: "string" } },
+              placeholder: { type: "string" },
+              rows: { type: "integer" },
+            },
+            required: ["question"],
+          },
+        },
+      },
+      required: ["title", "questions"],
+    },
+    async execute(id, params) {
+      const res = await promptObsidianModal(params);
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_show_notice",
+    label: "Obsidian Show Notice",
+    description: "Display a non-intrusive popup notice toast in the top right corner of Obsidian",
+    parameters: {
+      type: "object",
+      properties: {
+        message: { type: "string", description: "Notice text" },
+        duration: { type: "integer", default: 5000, description: "Duration in milliseconds" },
+      },
+      required: ["message"],
+    },
+    async execute(id, params) {
+      const res = await showObsidianNotice(params?.message, params?.duration || 5000);
+      return respond(res);
+    },
+  });
 }
+

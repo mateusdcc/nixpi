@@ -1,7 +1,111 @@
-const { Plugin } = require("obsidian");
+const { Plugin, Modal, Notice } = require("obsidian");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+
+class DiagnosticProbeModal extends Modal {
+  constructor(app, options, resolve) {
+    super(app);
+    this.options = options || {};
+    this.resolve = resolve;
+    this.submitted = false;
+    this.answers = {};
+  }
+
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.style.maxHeight = "80vh";
+    contentEl.style.overflowY = "auto";
+
+    const header = contentEl.createEl("h2", { text: this.options.title || "Diagnostic Knowledge Probe" });
+    header.style.marginBottom = "8px";
+
+    if (this.options.description) {
+      const desc = contentEl.createEl("p", { text: this.options.description });
+      desc.style.color = "var(--text-muted)";
+      desc.style.marginBottom = "16px";
+    }
+
+    const form = contentEl.createEl("form");
+    const questions = this.options.questions || [];
+
+    questions.forEach((q, index) => {
+      const qBlock = form.createEl("div");
+      qBlock.style.marginBottom = "18px";
+      qBlock.style.padding = "12px";
+      qBlock.style.borderRadius = "6px";
+      qBlock.style.backgroundColor = "var(--background-secondary)";
+
+      const tierTag = q.tier ? `[${q.tier.toUpperCase()}] ` : "";
+      const qTitle = qBlock.createEl("div", { text: `${index + 1}. ${tierTag}${q.question}` });
+      qTitle.style.fontWeight = "bold";
+      qTitle.style.marginBottom = "8px";
+
+      const fieldId = q.id || `q_${index + 1}`;
+
+      if (q.type === "choice" && Array.isArray(q.options) && q.options.length > 0) {
+        q.options.forEach((opt) => {
+          const row = qBlock.createEl("label");
+          row.style.display = "block";
+          row.style.margin = "4px 0";
+          row.style.cursor = "pointer";
+
+          const radio = row.createEl("input", { type: "radio", attr: { name: fieldId, value: opt } });
+          radio.style.marginRight = "6px";
+          row.createSpan({ text: opt });
+
+          radio.addEventListener("change", () => {
+            this.answers[fieldId] = opt;
+          });
+        });
+      } else {
+        const textarea = qBlock.createEl("textarea", {
+          attr: {
+            placeholder: q.placeholder || "Enter your technical analysis / response...",
+            rows: q.rows || 3,
+          },
+        });
+        textarea.style.width = "100%";
+        textarea.style.boxSizing = "border-box";
+        textarea.style.marginTop = "4px";
+        textarea.style.resize = "vertical";
+
+        textarea.addEventListener("input", (e) => {
+          this.answers[fieldId] = e.target.value;
+        });
+      }
+    });
+
+    const btnRow = form.createEl("div");
+    btnRow.style.display = "flex";
+    btnRow.style.justifyContent = "flex-end";
+    btnRow.style.gap = "10px";
+    btnRow.style.marginTop = "16px";
+
+    btnRow.createEl("button", {
+      type: "submit",
+      text: this.options.submitText || "Submit Diagnostic Assessment",
+      cls: "mod-cta",
+    });
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.submitted = true;
+      new Notice("Diagnostic responses submitted to Pi");
+      this.close();
+      this.resolve({ success: true, submitted: true, answers: this.answers });
+    });
+  }
+
+  onClose() {
+    const { contentEl } = this;
+    contentEl.empty();
+    if (!this.submitted) {
+      this.resolve({ success: false, submitted: false, error: "Modal closed by user", answers: this.answers });
+    }
+  }
+}
 
 module.exports = class PiBridgePlugin extends Plugin {
   async onload() {
@@ -57,6 +161,15 @@ module.exports = class PiBridgePlugin extends Plugin {
 
   async route(method, pathname, body, params) {
     if (pathname === "/" || pathname === "/status") return this.handleStatus();
+    if (pathname === "/modal" || pathname === "/probe") {
+      return new Promise((resolve) => {
+        new DiagnosticProbeModal(this.app, body, resolve).open();
+      });
+    }
+    if (pathname === "/notice") {
+      new Notice(body.message || params.get("message") || "", body.duration || 5000);
+      return { success: true };
+    }
     if (pathname === "/screenshot") return this.handleScreenshot(body, params);
     if (pathname === "/layout" || pathname === "/workspace/layout") return this.handleLayout();
     if (pathname === "/open") return this.handleOpen(body, params);

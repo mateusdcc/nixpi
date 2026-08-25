@@ -56,7 +56,7 @@
             ];
 
             shellHook = ''
-              echo "🎓 Loaded learning devShell with configured Pi (${learningPi.name})"
+              echo "[nixpi] Loaded learning devShell with configured Pi (${learningPi.name})"
             '';
           };
         }

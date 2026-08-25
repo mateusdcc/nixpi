@@ -198,3 +198,38 @@ export function getCoreFallbackCommands() {
     { id: "graph:open", name: "Open graph view" },
   ];
 }
+
+export async function promptObsidianModal(modalPayload = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/modal`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: modalPayload,
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function showObsidianNotice(message, duration = 5000, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/notice`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: { message, duration },
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+  return { success: false };
+}
+
