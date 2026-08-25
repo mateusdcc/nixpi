@@ -47,6 +47,9 @@
           feynmanTechnique = import ./modules/skills/feynman-technique.nix;
           activeRecallNotes = import ./modules/skills/active-recall-notes.nix;
           literatureDeepDive = import ./modules/skills/literature-deep-dive.nix;
+          giftedDiagnosticProbe = import ./modules/skills/gifted-diagnostic-probe.nix;
+          paginatedAtomicNotes = import ./modules/skills/paginated-atomic-notes.nix;
+          mermaidDiagrams = import ./modules/skills/mermaid-diagrams.nix;
           legalPainDiscovery = import ./modules/skills/legal-pain-discovery.nix;
           voiceOfCustomerMining = import ./modules/skills/voice-of-customer-mining.nix;
           evidenceDeduplication = import ./modules/skills/evidence-deduplication.nix;
@@ -211,6 +214,15 @@
             mkPiSkill = nixpiLib.mkPiSkill;
           };
           skill-literature-deep-dive = pkgs.callPackage ./packages/skills/literature-deep-dive {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-gifted-diagnostic-probe = pkgs.callPackage ./packages/skills/gifted-diagnostic-probe {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-paginated-atomic-notes = pkgs.callPackage ./packages/skills/paginated-atomic-notes {
+            mkPiSkill = nixpiLib.mkPiSkill;
+          };
+          skill-mermaid-diagrams = pkgs.callPackage ./packages/skills/mermaid-diagrams {
             mkPiSkill = nixpiLib.mkPiSkill;
           };
 
