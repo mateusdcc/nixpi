@@ -1,4 +1,4 @@
-{ pkgs, nixpiLib }:
+{ pkgs, nixpiLib, obsidianModule ? null }:
 
 let
   lib = pkgs.lib;
@@ -17,7 +17,7 @@ let
   # Test 1: Full configuration evaluation with object references
   testEval = nixpiLib.evalPi {
     inherit pkgs;
-    modules = [
+    modules = (if obsidianModule != null then [ obsidianModule ] else [ ]) ++ [
       (
         { config, ... }:
         {

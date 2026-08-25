@@ -1,4 +1,4 @@
-{ pkgs, nixpiLib }:
+{ pkgs, nixpiLib, obsidianModule ? null }:
 
 let
   testSkill = nixpiLib.mkPiSkill {
@@ -34,7 +34,7 @@ let
 
   configuredPi = nixpiLib.makePi {
     inherit pkgs;
-    modules = [
+    modules = (if obsidianModule != null then [ obsidianModule ] else [ ]) ++ [
       {
         programs.pi = {
           enable = true;

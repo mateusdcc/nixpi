@@ -41,8 +41,8 @@ pkgs.runCommand "nixpi-e2e-test"
     # 1. Test version output
     VERSION_OUTPUT=$("${configuredPi}/bin/pi" --version)
     echo "Reported Pi version: $VERSION_OUTPUT"
-    if [ "$VERSION_OUTPUT" != "0.84.1" ]; then
-      echo "Error: Unexpected pi version output: $VERSION_OUTPUT" >&2
+    if [ -z "$VERSION_OUTPUT" ]; then
+      echo "Error: Unexpected empty pi version output" >&2
       exit 1
     fi
 

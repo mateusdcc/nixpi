@@ -12,7 +12,6 @@
     ./extensions/ripgrep-search.nix
     ./extensions/plan-mode.nix
     ./extensions/pi-gpt-search.nix
-    ./extensions/obsidian.nix
     ./extensions/research-tools.nix
     ./skills/default.nix
     ./providers/antigravity.nix

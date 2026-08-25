@@ -3,10 +3,15 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    deep-comprehension-engine.url = "path:/Users/mateusdcc/Projects/deep-comprehension-engine";
   };
 
   outputs =
-    { self, nixpkgs }:
+    {
+      self,
+      nixpkgs,
+      deep-comprehension-engine,
+    }:
     let
       systems = [
         "x86_64-linux"
@@ -29,7 +34,7 @@
         profiles = {
           minimal = import ./modules/profiles/minimal.nix;
           research = import ./modules/profiles/research.nix;
-          learning = import ./modules/profiles/learning.nix;
+          learning = deep-comprehension-engine.piModules.default;
           legalResearch = import ./modules/profiles/legal-research.nix;
         };
         extensions = {
@@ -37,20 +42,11 @@
           ripgrep-search = import ./modules/extensions/ripgrep-search.nix;
           plan-mode = import ./modules/extensions/plan-mode.nix;
           pi-gpt-search = import ./modules/extensions/pi-gpt-search.nix;
-          obsidian = import ./modules/extensions/obsidian.nix;
+          obsidian = deep-comprehension-engine.piModules.extensions.obsidian;
           researchTools = import ./modules/extensions/research-tools.nix;
         };
         skills = {
           commit-style = import ./modules/skills/commit-style.nix;
-          obsidianScreenshot = import ./modules/skills/obsidian-screenshot.nix;
-          socraticTutor = import ./modules/skills/socratic-tutor.nix;
-          feynmanTechnique = import ./modules/skills/feynman-technique.nix;
-          activeRecallNotes = import ./modules/skills/active-recall-notes.nix;
-          literatureDeepDive = import ./modules/skills/literature-deep-dive.nix;
-          deepComprehensionEngine = import ./modules/skills/deep-comprehension-engine.nix;
-          giftedDiagnosticProbe = import ./modules/skills/gifted-diagnostic-probe.nix;
-          paginatedAtomicNotes = import ./modules/skills/paginated-atomic-notes.nix;
-          mermaidDiagrams = import ./modules/skills/mermaid-diagrams.nix;
           legalPainDiscovery = import ./modules/skills/legal-pain-discovery.nix;
           voiceOfCustomerMining = import ./modules/skills/voice-of-customer-mining.nix;
           evidenceDeduplication = import ./modules/skills/evidence-deduplication.nix;
@@ -59,6 +55,15 @@
           brazilLocalizationTest = import ./modules/skills/brazil-localization-test.nix;
           opportunityScoring = import ./modules/skills/opportunity-scoring.nix;
           productOpportunityReport = import ./modules/skills/product-opportunity-report.nix;
+          obsidianScreenshot = deep-comprehension-engine.piModules.skills.obsidianScreenshot;
+          socraticTutor = deep-comprehension-engine.piModules.skills.socraticTutor;
+          feynmanTechnique = deep-comprehension-engine.piModules.skills.feynmanTechnique;
+          activeRecallNotes = deep-comprehension-engine.piModules.skills.activeRecallNotes;
+          literatureDeepDive = deep-comprehension-engine.piModules.skills.literatureDeepDive;
+          deepComprehensionEngine = deep-comprehension-engine.piModules.skills.deepComprehensionEngine;
+          giftedDiagnosticProbe = deep-comprehension-engine.piModules.skills.giftedDiagnosticProbe;
+          paginatedAtomicNotes = deep-comprehension-engine.piModules.skills.paginatedAtomicNotes;
+          mermaidDiagrams = deep-comprehension-engine.piModules.skills.mermaidDiagrams;
         };
         providers = {
           antigravity = import ./modules/providers/antigravity.nix;
@@ -98,40 +103,21 @@
             inherit pkgs;
           };
           mkExt = nixpiLib.mkPiExtension;
-          antigravityPkg = pkgs.callPackage ./packages/providers/antigravity {
-            mkPiExtension = mkExt;
-          };
-          evidenceLedgerPkg = pkgs.callPackage ./packages/evidence-ledger { };
-          researchToolsPkg = pkgs.callPackage ./packages/extensions/research-tools {
-            mkPiExtension = mkExt;
-          };
-          promptResearchPkg = pkgs.callPackage ./packages/prompts/research-lawyer-opportunities { };
+          mkSkill = nixpiLib.mkPiSkill;
+          mkPrompt = nixpiLib.mkPiPrompt;
         in
-        {
+        rec {
           default = nixpiLib.makePi {
             inherit pkgs;
             modules = [
-              (
-                { config, ... }:
-                {
-                  programs.pi = {
-                    enable = true;
-                    providers.antigravity.enable = true;
-                    settings = {
-                      defaultProvider = config.programs.pi.providers.antigravity;
-                      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
-                      theme = "dark";
-                    };
-                    extensions = {
-                      echo.enable = true;
-                      ripgrep-search.enable = true;
-                    };
-                    skills = {
-                      commit-style.enable = true;
-                    };
-                  };
-                }
-              )
+              self.piModules.default
+            ];
+          };
+
+          learning = nixpiLib.makePi {
+            inherit pkgs;
+            modules = [
+              deep-comprehension-engine.piModules.default
             ];
           };
 
@@ -139,140 +125,78 @@
             inherit pkgs;
             modules = [
               self.piModules.profiles.legalResearch
-              (
-                { config, ... }:
-                {
-                  programs.pi = {
-                    providers.antigravity.enable = true;
-                    settings = {
-                      defaultProvider = config.programs.pi.providers.antigravity;
-                      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
-                    };
-                  };
-                }
-              )
             ];
           };
 
-          learning = nixpiLib.makePi {
-            inherit pkgs;
-            modules = [
-              self.piModules.profiles.learning
-              (
-                { config, ... }:
-                {
-                  programs.pi = {
-                    providers.antigravity.enable = true;
-                    settings = {
-                      defaultProvider = config.programs.pi.providers.antigravity;
-                      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
-                    };
-                  };
-                }
-              )
-            ];
-          };
+          pi-unwrapped = pkgs.callPackage ./packages/pi { };
 
-          pi-unwrapped = pkgs.pi-coding-agent;
-          echo = pkgs.callPackage ./packages/extensions/echo { mkPiExtension = mkExt; };
+          echo = pkgs.callPackage ./packages/extensions/echo {
+            mkPiExtension = mkExt;
+          };
           ripgrep-search = pkgs.callPackage ./packages/extensions/ripgrep-search {
             mkPiExtension = mkExt;
           };
-          plan-mode = pkgs.callPackage ./packages/extensions/plan-mode { mkPiExtension = mkExt; };
+          plan-mode = pkgs.callPackage ./packages/extensions/plan-mode {
+            mkPiExtension = mkExt;
+          };
           pi-gpt-search = pkgs.callPackage ./packages/extensions/pi-gpt-search {
             mkPiExtension = mkExt;
           };
-          obsidian = pkgs.callPackage ./packages/extensions/obsidian {
+          obsidian = deep-comprehension-engine.packages.${system}.extension-obsidian;
+          research-tools = pkgs.callPackage ./packages/extensions/research-tools {
             mkPiExtension = mkExt;
           };
-          research-tools = researchToolsPkg;
-          evidence-ledger = evidenceLedgerPkg;
-          prompt-research-lawyer-opportunities = promptResearchPkg;
-
-          antigravity = antigravityPkg;
-          pi-antigravity = antigravityPkg;
+          antigravity = pkgs.callPackage ./packages/providers/antigravity {
+            mkPiExtension = mkExt;
+          };
+          pi-antigravity = antigravity;
 
           commit-style = pkgs.callPackage ./packages/skills/commit-style {
-            mkPiSkill = nixpiLib.mkPiSkill;
+            mkPiSkill = mkSkill;
           };
-          skill-commit-style = pkgs.callPackage ./packages/skills/commit-style {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          obsidian-screenshot = pkgs.callPackage ./packages/skills/obsidian-screenshot {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          skill-obsidian-screenshot = pkgs.callPackage ./packages/skills/obsidian-screenshot {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
+          skill-commit-style = commit-style;
 
-          skill-socratic-tutor = pkgs.callPackage ./packages/skills/socratic-tutor {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          skill-feynman-technique = pkgs.callPackage ./packages/skills/feynman-technique {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          skill-active-recall-notes = pkgs.callPackage ./packages/skills/active-recall-notes {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          skill-literature-deep-dive = pkgs.callPackage ./packages/skills/literature-deep-dive {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          skill-deep-comprehension-engine = pkgs.callPackage ./packages/skills/deep-comprehension-engine {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          skill-gifted-diagnostic-probe = pkgs.callPackage ./packages/skills/gifted-diagnostic-probe {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          skill-paginated-atomic-notes = pkgs.callPackage ./packages/skills/paginated-atomic-notes {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-          skill-mermaid-diagrams = pkgs.callPackage ./packages/skills/mermaid-diagrams {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
+          evidence-ledger = pkgs.callPackage ./packages/evidence-ledger { };
+          prompt-research-lawyer-opportunities =
+            pkgs.callPackage ./packages/prompts/research-lawyer-opportunities
+              {
+                mkPiPrompt = mkPrompt;
+              };
+
+          obsidian-screenshot = deep-comprehension-engine.packages.${system}.skill-obsidian-screenshot;
+          skill-obsidian-screenshot = obsidian-screenshot;
+          skill-socratic-tutor = deep-comprehension-engine.packages.${system}.skill-socratic-tutor;
+          skill-feynman-technique = deep-comprehension-engine.packages.${system}.skill-feynman-technique;
+          skill-active-recall-notes = deep-comprehension-engine.packages.${system}.skill-active-recall-notes;
+          skill-literature-deep-dive = deep-comprehension-engine.packages.${system}.skill-literature-deep-dive;
+          skill-deep-comprehension-engine = deep-comprehension-engine.packages.${system}.skill-deep-comprehension-engine;
+          skill-gifted-diagnostic-probe = deep-comprehension-engine.packages.${system}.skill-gifted-diagnostic-probe;
+          skill-paginated-atomic-notes = deep-comprehension-engine.packages.${system}.skill-paginated-atomic-notes;
+          skill-mermaid-diagrams = deep-comprehension-engine.packages.${system}.skill-mermaid-diagrams;
 
           skill-legal-pain-discovery = pkgs.callPackage ./packages/skills/legal-pain-discovery {
-            mkPiSkill = nixpiLib.mkPiSkill;
+            mkPiSkill = mkSkill;
           };
           skill-voice-of-customer-mining = pkgs.callPackage ./packages/skills/voice-of-customer-mining {
-            mkPiSkill = nixpiLib.mkPiSkill;
+            mkPiSkill = mkSkill;
           };
           skill-evidence-deduplication = pkgs.callPackage ./packages/skills/evidence-deduplication {
-            mkPiSkill = nixpiLib.mkPiSkill;
+            mkPiSkill = mkSkill;
           };
           skill-legal-market-segmentation = pkgs.callPackage ./packages/skills/legal-market-segmentation {
-            mkPiSkill = nixpiLib.mkPiSkill;
+            mkPiSkill = mkSkill;
           };
           skill-competitor-gap-analysis = pkgs.callPackage ./packages/skills/competitor-gap-analysis {
-            mkPiSkill = nixpiLib.mkPiSkill;
+            mkPiSkill = mkSkill;
           };
           skill-brazil-localization-test = pkgs.callPackage ./packages/skills/brazil-localization-test {
-            mkPiSkill = nixpiLib.mkPiSkill;
+            mkPiSkill = mkSkill;
           };
           skill-opportunity-scoring = pkgs.callPackage ./packages/skills/opportunity-scoring {
-            mkPiSkill = nixpiLib.mkPiSkill;
+            mkPiSkill = mkSkill;
           };
           skill-product-opportunity-report = pkgs.callPackage ./packages/skills/product-opportunity-report {
-            mkPiSkill = nixpiLib.mkPiSkill;
-          };
-        }
-      );
-
-      devShells = forAllSystems (
-        system:
-        let
-          pkgs = nixpkgs.legacyPackages.${system};
-          configuredPi = self.packages.${system}.legal-research;
-        in
-        {
-          default = pkgs.mkShell {
-            packages = [
-              configuredPi
-              pkgs.nixfmt
-              pkgs.git
-              pkgs.ripgrep
-              pkgs.duckdb
-              pkgs.python3
-            ];
+            mkPiSkill = mkSkill;
           };
         }
       );
@@ -289,12 +213,14 @@
         {
           eval-tests = pkgs.callPackage ./tests/eval/eval-test.nix {
             inherit nixpiLib;
+            obsidianModule = self.piModules.extensions.obsidian;
           };
           invalid-option-tests = pkgs.callPackage ./tests/eval/invalid-option-test.nix {
             inherit nixpiLib;
           };
           build-tests = pkgs.callPackage ./tests/build/build-test.nix {
             inherit nixpiLib;
+            obsidianModule = self.piModules.extensions.obsidian;
           };
           hm-tests = pkgs.callPackage ./tests/integration/hm-test.nix { };
           e2e-tests = pkgs.callPackage ./tests/e2e/e2e-test.nix {
