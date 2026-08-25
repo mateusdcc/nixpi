@@ -111,6 +111,7 @@ module.exports = class PiBridgePlugin extends Plugin {
   async onload() {
     this.port = 27125;
     this.startServer();
+    this.registerCodeBlockProcessors();
   }
 
   onunload() {
@@ -118,6 +119,165 @@ module.exports = class PiBridgePlugin extends Plugin {
       this.server.close();
       this.server = null;
     }
+  }
+
+  registerCodeBlockProcessors() {
+    // 1. In-Note Quiz Processor
+    this.registerMarkdownCodeBlockProcessor("pi-quiz", (source, el, ctx) => {
+      const config = this.parseSimpleYaml(source);
+      el.empty();
+
+      const card = el.createEl("div", { cls: "pi-quiz-container" });
+      card.style.border = "1px solid var(--interactive-accent)";
+      card.style.borderRadius = "8px";
+      card.style.padding = "14px";
+      card.style.margin = "14px 0";
+      card.style.backgroundColor = "var(--background-secondary)";
+
+      const badge = card.createEl("div", { text: `[PI QUIZ] ${config.title || config.id || "Knowledge Check"}` });
+      badge.style.fontSize = "11px";
+      badge.style.fontWeight = "bold";
+      badge.style.color = "var(--interactive-accent)";
+      badge.style.textTransform = "uppercase";
+      badge.style.marginBottom = "6px";
+
+      const questionText = card.createEl("div", { text: config.question || config.prompt || "Answer the following question:" });
+      questionText.style.fontWeight = "600";
+      questionText.style.marginBottom = "10px";
+      questionText.style.lineHeight = "1.4";
+
+      const textarea = card.createEl("textarea", {
+        attr: {
+          placeholder: config.placeholder || "Type your analysis / solution here and click Submit to send to Pi...",
+          rows: config.rows ? parseInt(config.rows, 10) : 4,
+        },
+      });
+      textarea.style.width = "100%";
+      textarea.style.boxSizing = "border-box";
+      textarea.style.marginBottom = "10px";
+      textarea.style.borderRadius = "4px";
+      textarea.style.resize = "vertical";
+
+      const btnRow = card.createEl("div");
+      btnRow.style.display = "flex";
+      btnRow.style.justifyContent = "space-between";
+      btnRow.style.alignItems = "center";
+
+      const statusSpan = btnRow.createEl("span", { text: "" });
+      statusSpan.style.fontSize = "12px";
+      statusSpan.style.color = "var(--text-muted)";
+
+      const submitBtn = btnRow.createEl("button", {
+        text: "Send to Pi for Verification",
+        cls: "mod-cta",
+      });
+
+      submitBtn.addEventListener("click", async () => {
+        const answer = textarea.value.trim();
+        if (!answer) {
+          new Notice("Please enter an answer before submitting.");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.setText("Sending to Pi...");
+
+        try {
+          const payload = {
+            notePath: ctx.sourcePath || "",
+            quizId: config.id || `quiz-${Date.now()}`,
+            title: config.title || "",
+            question: config.question || "",
+            answer: answer,
+            timestamp: new Date().toISOString(),
+          };
+
+          const res = await fetch(`http://127.0.0.1:${this.port}/quiz/submit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          if (res.ok) {
+            submitBtn.setText("Answer Sent to Pi");
+            submitBtn.style.backgroundColor = "var(--color-green)";
+            statusSpan.setText("Queued for Pi verification");
+            new Notice("Quiz response submitted to Pi for verification.");
+          } else {
+            throw new Error(`Server returned ${res.status}`);
+          }
+        } catch (err) {
+          submitBtn.disabled = false;
+          submitBtn.setText("Retry Sending to Pi");
+          new Notice(`Failed to send quiz to Pi: ${err.message}`);
+        }
+      });
+    });
+
+    // 2. In-Note Section Action / Query Processor
+    this.registerMarkdownCodeBlockProcessor("pi-action", (source, el, ctx) => {
+      const config = this.parseSimpleYaml(source);
+      el.empty();
+
+      const actionBox = el.createEl("div");
+      actionBox.style.margin = "10px 0";
+      actionBox.style.display = "flex";
+      actionBox.style.alignItems = "center";
+      actionBox.style.gap = "8px";
+
+      const btn = actionBox.createEl("button", {
+        text: config.label || "Ask Pi About This Section",
+      });
+      btn.style.fontSize = "12px";
+      btn.style.padding = "4px 10px";
+
+      const infoSpan = actionBox.createEl("span", {
+        text: config.section ? `Section: ${config.section}` : "",
+      });
+      infoSpan.style.fontSize = "11px";
+      infoSpan.style.color = "var(--text-muted)";
+
+      btn.addEventListener("click", async () => {
+        try {
+          const payload = {
+            notePath: ctx.sourcePath || "",
+            action: config.label || "Ask Pi",
+            prompt: config.prompt || "",
+            section: config.section || "",
+            timestamp: new Date().toISOString(),
+          };
+
+          await fetch(`http://127.0.0.1:${this.port}/action/submit`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          new Notice(`Action sent to Pi: ${config.label || "Query"}`);
+        } catch (err) {
+          new Notice(`Action failed: ${err.message}`);
+        }
+      });
+    });
+  }
+
+  parseSimpleYaml(str) {
+    const out = {};
+    const lines = str.split("\n");
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const idx = trimmed.indexOf(":");
+      if (idx !== -1) {
+        const k = trimmed.substring(0, idx).trim();
+        let v = trimmed.substring(idx + 1).trim();
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+          v = v.substring(1, v.length - 1);
+        }
+        out[k] = v;
+      }
+    }
+    return out;
   }
 
   startServer() {
@@ -170,6 +330,11 @@ module.exports = class PiBridgePlugin extends Plugin {
       new Notice(body.message || params.get("message") || "", body.duration || 5000);
       return { success: true };
     }
+    if (pathname === "/quiz/submit") return this.handleQuizSubmit(body);
+    if (pathname === "/quiz/pending" || pathname === "/quiz/submissions") return this.handleQuizPending();
+    if (pathname === "/quiz/feedback") return this.handleQuizFeedback(body);
+    if (pathname === "/action/submit") return this.handleActionSubmit(body);
+
     if (pathname === "/screenshot") return this.handleScreenshot(body, params);
     if (pathname === "/layout" || pathname === "/workspace/layout") return this.handleLayout();
     if (pathname === "/open") return this.handleOpen(body, params);
@@ -184,6 +349,67 @@ module.exports = class PiBridgePlugin extends Plugin {
   handleStatus() {
     const cmdCount = Object.keys(this.app.commands.commands || {}).length;
     return { status: "ok", vault: this.app.vault.getName(), commandsCount: cmdCount };
+  }
+
+  handleQuizSubmit(body) {
+    const basePath = this.app.vault.adapter.basePath || process.cwd();
+    const piDir = path.join(basePath, ".pi");
+    fs.mkdirSync(piDir, { recursive: true });
+    const submissionsFile = path.join(piDir, "quiz_submissions.json");
+
+    let list = [];
+    if (fs.existsSync(submissionsFile)) {
+      try { list = JSON.parse(fs.readFileSync(submissionsFile, "utf-8")); } catch {}
+    }
+    list.push({ ...body, receivedAt: new Date().toISOString() });
+    fs.writeFileSync(submissionsFile, JSON.stringify(list, null, 2), "utf-8");
+    return { success: true, count: list.length, latest: body };
+  }
+
+  handleQuizPending() {
+    const basePath = this.app.vault.adapter.basePath || process.cwd();
+    const submissionsFile = path.join(basePath, ".pi", "quiz_submissions.json");
+    if (fs.existsSync(submissionsFile)) {
+      try {
+        const list = JSON.parse(fs.readFileSync(submissionsFile, "utf-8"));
+        return { success: true, submissions: list };
+      } catch {}
+    }
+    return { success: true, submissions: [] };
+  }
+
+  handleQuizFeedback(body) {
+    const basePath = this.app.vault.adapter.basePath || process.cwd();
+    const piDir = path.join(basePath, ".pi");
+    fs.mkdirSync(piDir, { recursive: true });
+    const feedbackFile = path.join(piDir, "quiz_feedback.json");
+
+    let list = [];
+    if (fs.existsSync(feedbackFile)) {
+      try { list = JSON.parse(fs.readFileSync(feedbackFile, "utf-8")); } catch {}
+    }
+    list.push({ ...body, feedbackAt: new Date().toISOString() });
+    fs.writeFileSync(feedbackFile, JSON.stringify(list, null, 2), "utf-8");
+
+    if (body.message || body.feedback) {
+      new Notice(`[Pi Verification] ${body.title || "Quiz Evaluated"}: ${body.feedback || body.message}`, 8000);
+    }
+    return { success: true };
+  }
+
+  handleActionSubmit(body) {
+    const basePath = this.app.vault.adapter.basePath || process.cwd();
+    const piDir = path.join(basePath, ".pi");
+    fs.mkdirSync(piDir, { recursive: true });
+    const actionsFile = path.join(piDir, "action_requests.json");
+
+    let list = [];
+    if (fs.existsSync(actionsFile)) {
+      try { list = JSON.parse(fs.readFileSync(actionsFile, "utf-8")); } catch {}
+    }
+    list.push({ ...body, receivedAt: new Date().toISOString() });
+    fs.writeFileSync(actionsFile, JSON.stringify(list, null, 2), "utf-8");
+    return { success: true, count: list.length, latest: body };
   }
 
   async handleScreenshot(body, params) {

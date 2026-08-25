@@ -233,3 +233,37 @@ export async function showObsidianNotice(message, duration = 5000, clientConfig 
   return { success: false };
 }
 
+export async function getQuizSubmissions(clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/quiz/pending`, {
+      method: "GET",
+      headers: buildHeaders(apiKey),
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function sendQuizFeedback(feedbackPayload = {}, clientConfig = {}) {
+  const { url, apiKey } = getClientConfig(clientConfig.url, clientConfig.apiKey);
+  try {
+    const res = await executeHttpRequest(`${url}/quiz/feedback`, {
+      method: "POST",
+      headers: buildHeaders(apiKey),
+      body: feedbackPayload,
+    });
+    if (res.status === 200) {
+      return JSON.parse(res.data);
+    }
+    return { success: false, error: `Bridge returned status ${res.status}: ${res.data}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+}
+
+

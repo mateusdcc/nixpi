@@ -9,6 +9,8 @@ import {
   takeObsidianScreenshot,
   promptObsidianModal,
   showObsidianNotice,
+  getQuizSubmissions,
+  sendQuizFeedback,
 } from "./client.js";
 import { readSettings, updateSettings } from "./settings.js";
 import { getNoteLinks, buildVaultLinkGraph } from "./links.js";
@@ -301,5 +303,40 @@ export function registerObsidianTools(pi) {
       return respond(res);
     },
   });
+
+  pi.registerTool({
+    name: "obsidian_get_quiz_submissions",
+    label: "Obsidian Get Quiz Submissions",
+    description: "Retrieve quiz answers and user submissions sent from in-note quiz buttons for Pi verification",
+    parameters: {
+      type: "object",
+      properties: {},
+    },
+    async execute() {
+      const res = await getQuizSubmissions();
+      return respond(res);
+    },
+  });
+
+  pi.registerTool({
+    name: "obsidian_send_quiz_feedback",
+    label: "Obsidian Send Quiz Feedback",
+    description: "Send evaluation feedback and verification results back to the Obsidian vault and user",
+    parameters: {
+      type: "object",
+      properties: {
+        quizId: { type: "string", description: "ID of the quiz evaluated" },
+        title: { type: "string", description: "Quiz or section title" },
+        feedback: { type: "string", description: "Detailed verification and evaluation feedback" },
+        score: { type: "string", description: "Optional score or mastery rating" },
+      },
+      required: ["feedback"],
+    },
+    async execute(id, params) {
+      const res = await sendQuizFeedback(params);
+      return respond(res);
+    },
+  });
 }
+
 
