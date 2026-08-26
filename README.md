@@ -9,7 +9,6 @@
 ## Table of Contents
 
 - [What nixpi is](#what-nixpi-is)
-- [What nixpi is NOT](#what-nixpi-is-not)
 - [Quick Start (Standalone)](#quick-start-standalone)
 - [Home Manager Integration](#home-manager-integration)
 - [Development Shell (`nix develop`)](#development-shell-nix-develop)
@@ -55,14 +54,6 @@ Pi:
     model execution
     TUI
 ```
-
----
-
-## What nixpi is NOT
-
-- **NOT a replacement package manager**: `nixpi` does not implement `nixpi install` or a custom mutable package database.
-- **NOT an extension runtime**: Pi itself executes extensions, tools, commands, and prompts using its standard interfaces.
-- **NOT a secret store**: `nixpi` does not store API keys or private tokens in the Nix store.
 
 ---
 
