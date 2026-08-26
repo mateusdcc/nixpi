@@ -9,7 +9,7 @@ let
   coreModule = import ../modules;
 in
 lib.evalModules {
-  modules = [ coreModule ] ++ modules;
+  modules = [ coreModule ] ++ (if builtins.isList modules then modules else [ modules ]);
   specialArgs = {
     inherit pkgs;
   }

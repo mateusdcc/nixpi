@@ -5,6 +5,7 @@
 
 let
   mkResource = if pkgs != null then import ./mk-resource.nix { inherit lib pkgs; } else { };
+  factories = import ./module-factories.nix { inherit lib; };
 in
 {
   evalPi =
@@ -42,4 +43,10 @@ in
   mkPiSkill = mkResource.mkPiSkill or null;
   mkPiPrompt = mkResource.mkPiPrompt or null;
   mkPiTheme = mkResource.mkPiTheme or null;
+
+  inherit (factories)
+    mkPiExtensionModule
+    mkPiSkillModule
+    mkPiProviderModule
+    ;
 }
