@@ -483,6 +483,18 @@ programs.pi.extensions = {
 };
 ```
 
+### Available Extensions
+
+Each extension has its own dedicated documentation detailing tools, commands, and typed module parameters:
+
+| Extension | Module Path | Description | Docs |
+|---|---|---|---|
+| [`echo`](packages/extensions/echo/README.md) | `programs.pi.extensions.echo` | Lightweight test & demo extension registering `/echo-hello` | [README](packages/extensions/echo/README.md) |
+| [`ripgrep-search`](packages/extensions/ripgrep-search/README.md) | `programs.pi.extensions.ripgrep-search` | Fast regex file search tool (`rg_search`) with automatic `rg` in `PATH` | [README](packages/extensions/ripgrep-search/README.md) |
+| [`plan-mode`](packages/extensions/plan-mode/README.md) | `programs.pi.extensions.plan-mode` | Multi-step task planner with modes (`fast`, `balanced`, `thorough`) and `/plan` command | [README](packages/extensions/plan-mode/README.md) |
+| [`pi-gpt-search`](packages/extensions/pi-gpt-search/README.md) | `programs.pi.extensions.pi-gpt-search` | Standalone model-independent web search engine | [README](packages/extensions/pi-gpt-search/README.md) |
+| [`research-tools`](packages/extensions/research-tools/README.md) | `programs.pi.extensions.research-tools` | Comprehensive legal tech research & MCP bridges (Exa, Firecrawl, Apify, BigIdeasDB, DuckDB) | [README](packages/extensions/research-tools/README.md) |
+
 ---
 
 ## Managing Skills (e.g. Conventional Commits)
