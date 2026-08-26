@@ -254,6 +254,9 @@
           };
           nixos-tests = pkgs.callPackage ./tests/integration/nixos-test.nix { };
           darwin-tests = pkgs.callPackage ./tests/integration/darwin-test.nix { };
+          legacy-packages-tests = pkgs.callPackage ./tests/build/legacy-packages-test.nix {
+            legacyPackages = self.legacyPackages.${system};
+          };
           legal-research-tests = pkgs.callPackage ./tests/legal-research/legal-research-test.nix {
             inherit nixpiLib;
             legalResearchProfile = self.piModules.profiles.legalResearch;

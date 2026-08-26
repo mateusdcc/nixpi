@@ -132,8 +132,12 @@
       description ? null,
       package ? null,
       defaultPackage ? null,
+      baseUrl ? null,
+      api ? null,
+      apiKey ? null,
+      models ? { },
       runtimePackages ? [ ],
-      extraOptions ? { },
+      extraPackages ? [ ],
       extraConfig ? cfg: { },
     }:
     {
@@ -143,7 +147,6 @@
       ...
     }:
     let
-      cfg = config.programs.pi.providers.${name};
       resolvedPkg =
         if package != null then
           package
@@ -151,31 +154,24 @@
           (if lib.isFunction defaultPackage then defaultPackage pkgs else defaultPackage)
         else
           null;
+      cfg = config.programs.pi.providers.${name};
     in
     {
-      options.programs.pi.providers.${name} = {
-        enable = lib.mkEnableOption (if description != null then description else "Pi ${name} provider");
-
-        package = lib.mkOption {
-          type = lib.types.nullOr lib.types.package;
-          default = resolvedPkg;
-          defaultText =
-            if resolvedPkg != null then lib.literalExpression "pkgs.piProviders.${name}" else null;
-          description = "Package providing the ${name} provider.";
-        };
-
-        runtimePackages = lib.mkOption {
-          type = lib.types.listOf lib.types.package;
-          default = runtimePackages;
-          description = "Additional runtime packages required by the ${name} provider.";
-        };
-      }
-      // extraOptions;
-
-      config = lib.mkIf cfg.enable (
-        lib.mkMerge [
-          (extraConfig cfg)
-        ]
-      );
+      config = lib.mkMerge [
+        {
+          programs.pi.providers.${name} = {
+            package = lib.mkDefault resolvedPkg;
+            runtimePackages = lib.mkDefault runtimePackages;
+          }
+          // lib.optionalAttrs (baseUrl != null) { baseUrl = lib.mkDefault baseUrl; }
+          // lib.optionalAttrs (api != null) { api = lib.mkDefault api; }
+          // lib.optionalAttrs (apiKey != null) { apiKey = lib.mkDefault apiKey; }
+          // lib.optionalAttrs (models != { }) { models = lib.mkDefault models; };
+        }
+        (lib.optionalAttrs (extraPackages != [ ]) {
+          programs.pi.extraPackages = extraPackages;
+        })
+        (extraConfig cfg)
+      ];
     };
 }
