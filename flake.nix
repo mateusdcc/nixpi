@@ -3,14 +3,12 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    deep-comprehension-engine.url = "path:/Users/mateusdcc/Projects/deep-comprehension-engine";
   };
 
   outputs =
     {
       self,
       nixpkgs,
-      deep-comprehension-engine,
     }:
     let
       systems = [
@@ -24,32 +22,16 @@
       lib = import ./lib {
         lib = nixpkgs.lib;
       };
-      bundledModules = [
-        ./modules
-        deep-comprehension-engine.piModules.extensions.obsidian
-        deep-comprehension-engine.piModules.skills.obsidianScreenshot
-        deep-comprehension-engine.piModules.skills.socraticTutor
-        deep-comprehension-engine.piModules.skills.feynmanTechnique
-        deep-comprehension-engine.piModules.skills.activeRecallNotes
-        deep-comprehension-engine.piModules.skills.literatureDeepDive
-        deep-comprehension-engine.piModules.skills.deepComprehensionEngine
-        deep-comprehension-engine.piModules.skills.giftedDiagnosticProbe
-        deep-comprehension-engine.piModules.skills.paginatedAtomicNotes
-        deep-comprehension-engine.piModules.skills.mermaidDiagrams
-      ];
     in
     {
       inherit lib;
 
       piModules = {
-        default = {
-          imports = bundledModules;
-        };
+        default = import ./modules;
         core = import ./modules/core/package.nix;
         profiles = {
           minimal = import ./modules/profiles/minimal.nix;
           research = import ./modules/profiles/research.nix;
-          learning = deep-comprehension-engine.piModules.default;
           legalResearch = import ./modules/profiles/legal-research.nix;
         };
         extensions = {
@@ -57,7 +39,6 @@
           ripgrep-search = import ./modules/extensions/ripgrep-search.nix;
           plan-mode = import ./modules/extensions/plan-mode.nix;
           pi-gpt-search = import ./modules/extensions/pi-gpt-search.nix;
-          obsidian = deep-comprehension-engine.piModules.extensions.obsidian;
           researchTools = import ./modules/extensions/research-tools.nix;
         };
         skills = {
@@ -70,15 +51,6 @@
           brazilLocalizationTest = import ./modules/skills/brazil-localization-test.nix;
           opportunityScoring = import ./modules/skills/opportunity-scoring.nix;
           productOpportunityReport = import ./modules/skills/product-opportunity-report.nix;
-          obsidianScreenshot = deep-comprehension-engine.piModules.skills.obsidianScreenshot;
-          socraticTutor = deep-comprehension-engine.piModules.skills.socraticTutor;
-          feynmanTechnique = deep-comprehension-engine.piModules.skills.feynmanTechnique;
-          activeRecallNotes = deep-comprehension-engine.piModules.skills.activeRecallNotes;
-          literatureDeepDive = deep-comprehension-engine.piModules.skills.literatureDeepDive;
-          deepComprehensionEngine = deep-comprehension-engine.piModules.skills.deepComprehensionEngine;
-          giftedDiagnosticProbe = deep-comprehension-engine.piModules.skills.giftedDiagnosticProbe;
-          paginatedAtomicNotes = deep-comprehension-engine.piModules.skills.paginatedAtomicNotes;
-          mermaidDiagrams = deep-comprehension-engine.piModules.skills.mermaidDiagrams;
         };
         providers = {
           antigravity = import ./modules/providers/antigravity.nix;
@@ -86,65 +58,22 @@
       };
 
       nixosModules = {
-        default = {
-          imports = [
-            ./integrations/nixos.nix
-          ]
-          ++ bundledModules;
-        };
-        pi = {
-          imports = [
-            ./integrations/nixos.nix
-          ]
-          ++ bundledModules;
-        };
+        default = import ./integrations/nixos.nix;
+        pi = import ./integrations/nixos.nix;
       };
 
       nixDarwinModules = {
-        default = {
-          imports = [
-            ./integrations/darwin.nix
-          ]
-          ++ bundledModules;
-        };
-        pi = {
-          imports = [
-            ./integrations/darwin.nix
-          ]
-          ++ bundledModules;
-        };
+        default = import ./integrations/darwin.nix;
+        pi = import ./integrations/darwin.nix;
       };
 
       homeModules = {
-        default = {
-          imports = [
-            ./integrations/home-manager.nix
-          ]
-          ++ bundledModules;
-        };
-        pi = {
-          imports = [
-            ./integrations/home-manager.nix
-          ]
-          ++ bundledModules;
-        };
+        default = import ./integrations/home-manager.nix;
+        pi = import ./integrations/home-manager.nix;
       };
 
       # Alias for backward compatibility
-      homeManagerModules = {
-        default = {
-          imports = [
-            ./integrations/home-manager.nix
-          ]
-          ++ bundledModules;
-        };
-        pi = {
-          imports = [
-            ./integrations/home-manager.nix
-          ]
-          ++ bundledModules;
-        };
-      };
+      homeManagerModules = self.homeModules;
 
       templates = {
         standalone = {
@@ -158,10 +87,6 @@
         devshell = {
           path = ./templates/devshell;
           description = "Project-specific development shell with Pi";
-        };
-        learning = {
-          path = ./templates/learning;
-          description = "Learning & Obsidian vault development shell with Pi";
         };
       };
 
@@ -182,13 +107,6 @@
             inherit pkgs;
             modules = [
               self.piModules.default
-            ];
-          };
-
-          learning = nixpiLib.makePi {
-            inherit pkgs;
-            modules = [
-              deep-comprehension-engine.piModules.default
             ];
           };
 
@@ -213,7 +131,6 @@
           pi-gpt-search = pkgs.callPackage ./packages/extensions/pi-gpt-search {
             mkPiExtension = mkExt;
           };
-          obsidian = deep-comprehension-engine.packages.${system}.extension-obsidian;
           research-tools = pkgs.callPackage ./packages/extensions/research-tools {
             mkPiExtension = mkExt;
           };
@@ -233,21 +150,6 @@
               {
                 mkPiPrompt = mkPrompt;
               };
-
-          obsidian-screenshot = deep-comprehension-engine.packages.${system}.skill-obsidian-screenshot;
-          skill-obsidian-screenshot = obsidian-screenshot;
-          skill-socratic-tutor = deep-comprehension-engine.packages.${system}.skill-socratic-tutor;
-          skill-feynman-technique = deep-comprehension-engine.packages.${system}.skill-feynman-technique;
-          skill-active-recall-notes = deep-comprehension-engine.packages.${system}.skill-active-recall-notes;
-          skill-literature-deep-dive =
-            deep-comprehension-engine.packages.${system}.skill-literature-deep-dive;
-          skill-deep-comprehension-engine =
-            deep-comprehension-engine.packages.${system}.skill-deep-comprehension-engine;
-          skill-gifted-diagnostic-probe =
-            deep-comprehension-engine.packages.${system}.skill-gifted-diagnostic-probe;
-          skill-paginated-atomic-notes =
-            deep-comprehension-engine.packages.${system}.skill-paginated-atomic-notes;
-          skill-mermaid-diagrams = deep-comprehension-engine.packages.${system}.skill-mermaid-diagrams;
 
           skill-legal-pain-discovery = pkgs.callPackage ./packages/skills/legal-pain-discovery {
             mkPiSkill = mkSkill;
@@ -288,14 +190,12 @@
         {
           eval-tests = pkgs.callPackage ./tests/eval/eval-test.nix {
             inherit nixpiLib;
-            obsidianModule = self.piModules.extensions.obsidian;
           };
           invalid-option-tests = pkgs.callPackage ./tests/eval/invalid-option-test.nix {
             inherit nixpiLib;
           };
           build-tests = pkgs.callPackage ./tests/build/build-test.nix {
             inherit nixpiLib;
-            obsidianModule = self.piModules.extensions.obsidian;
           };
           hm-tests = pkgs.callPackage ./tests/integration/hm-test.nix { };
           e2e-tests = pkgs.callPackage ./tests/e2e/e2e-test.nix {

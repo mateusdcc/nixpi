@@ -1,7 +1,6 @@
 {
   pkgs,
   nixpiLib,
-  obsidianModule ? null,
 }:
 
 let
@@ -38,7 +37,7 @@ let
 
   configuredPi = nixpiLib.makePi {
     inherit pkgs;
-    modules = (if obsidianModule != null then [ obsidianModule ] else [ ]) ++ [
+    modules = [
       {
         programs.pi = {
           enable = true;
@@ -53,7 +52,6 @@ let
           };
           extensions.echo.enable = true;
           extensions.ripgrep-search.enable = true;
-          extensions.obsidian.enable = true;
         };
       }
     ];
