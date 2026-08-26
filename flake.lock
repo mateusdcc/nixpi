@@ -5,8 +5,8 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1787699783,
-        "narHash": "sha256-uhNAAt5iFn0lGOj01bzldXmZ/6jMDeH8ew7c+2jtQNM=",
+        "lastModified": 1787704815,
+        "narHash": "sha256-B3GU0AIlCslVswapPvDXj6gY35hqrr1onFApy+uEAPM=",
         "path": "/Users/mateusdcc/Projects/deep-comprehension-engine",
         "type": "path"
       },
