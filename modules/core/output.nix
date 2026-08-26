@@ -77,7 +77,8 @@ let
     skill: if builtins.isAttrs skill then skill.runtimePackages or [ ] else [ ]
   ) (if builtins.isList (cfg.skills or { }) then cfg.skills else builtins.attrValues enabledSkills);
 
-  allSkillsList = skillPackages ++ (cfg.rawSkills or [ ]);
+  allSkillsList = skillPackages ++ (cfg.rawSkills or [ ]) ++ (cfg.extraSkills or [ ]);
+  allExtensionsList = (cfg.rawExtensions or [ ]) ++ (cfg.extraExtensions or [ ]);
 
   # Extract passthru runtimePackages from all package derivations
   allPackagesList = cfg.packages ++ extensionPackages ++ providerPackages;
@@ -87,10 +88,11 @@ let
       pkg.passthru.runtimePackages
     else
       [ ]
-  ) (allPackagesList ++ cfg.rawExtensions ++ allSkillsList);
+  ) (allPackagesList ++ allExtensionsList ++ allSkillsList);
 
   allRuntimePackages = lib.unique (
     cfg.runtimePackages
+    ++ (cfg.extraPackages or [ ])
     ++ extensionRuntimePkgs
     ++ providerRuntimePkgs
     ++ skillRuntimePkgs
@@ -105,7 +107,7 @@ let
     cfg.settings
     // {
       packages = map toStringPath allPackagesList;
-      extensions = map toStringPath cfg.rawExtensions;
+      extensions = map toStringPath allExtensionsList;
       skills = map toStringPath allSkillsList;
       prompts = map toStringPath cfg.prompts;
       themes = map toStringPath cfg.themes;
