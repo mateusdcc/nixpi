@@ -168,10 +168,14 @@
           skill-socratic-tutor = deep-comprehension-engine.packages.${system}.skill-socratic-tutor;
           skill-feynman-technique = deep-comprehension-engine.packages.${system}.skill-feynman-technique;
           skill-active-recall-notes = deep-comprehension-engine.packages.${system}.skill-active-recall-notes;
-          skill-literature-deep-dive = deep-comprehension-engine.packages.${system}.skill-literature-deep-dive;
-          skill-deep-comprehension-engine = deep-comprehension-engine.packages.${system}.skill-deep-comprehension-engine;
-          skill-gifted-diagnostic-probe = deep-comprehension-engine.packages.${system}.skill-gifted-diagnostic-probe;
-          skill-paginated-atomic-notes = deep-comprehension-engine.packages.${system}.skill-paginated-atomic-notes;
+          skill-literature-deep-dive =
+            deep-comprehension-engine.packages.${system}.skill-literature-deep-dive;
+          skill-deep-comprehension-engine =
+            deep-comprehension-engine.packages.${system}.skill-deep-comprehension-engine;
+          skill-gifted-diagnostic-probe =
+            deep-comprehension-engine.packages.${system}.skill-gifted-diagnostic-probe;
+          skill-paginated-atomic-notes =
+            deep-comprehension-engine.packages.${system}.skill-paginated-atomic-notes;
           skill-mermaid-diagrams = deep-comprehension-engine.packages.${system}.skill-mermaid-diagrams;
 
           skill-legal-pain-discovery = pkgs.callPackage ./packages/skills/legal-pain-discovery {

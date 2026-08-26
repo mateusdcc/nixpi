@@ -14,6 +14,7 @@
 - [Development Shell (`nix develop`)](#development-shell-nix-develop)
 - [Folder-Specific Profiles & `direnv`](#folder-specific-profiles--direnv)
 - [Custom Environments](#custom-environments)
+- [Starter Templates](#starter-templates)
 - [Managing Extensions](#managing-extensions)
 - [Managing Skills (e.g. Conventional Commits, Socratic Tutor)](#managing-skills-eg-conventional-commits-socratic-tutor)
 - [Automatic Runtime Dependencies](#automatic-runtime-dependencies)
@@ -413,6 +414,47 @@ direnv allow
 ```
 
 Whenever you `cd` into the directory, `direnv` activates the customized `pi` binary with the exact deep-learning profile, model configurations, and runtime dependencies. Leaving the directory instantly restores your standard shell environment.
+
+---
+
+## Starter Templates
+
+`nixpi` provides ready-to-use flake templates for quickly bootstrapping new environments using `nix flake init -t`:
+
+### 1. Standalone Package (`#standalone`)
+
+Initialize a standalone `flake.nix` that builds a custom-configured `pi` binary with default settings, extensions, and skills:
+
+```bash
+nix flake init -t github:mateusdcc/nixpi#standalone
+nix run .#default
+```
+
+### 2. Home Manager Configuration (`#home-manager`)
+
+Generate a ready-to-import `home.nix` for your user environment:
+
+```bash
+nix flake init -t github:mateusdcc/nixpi#home-manager
+```
+
+### 3. Project Development Shell (`#devshell`)
+
+Initialize a project-scoped `flake.nix` with a pinned Pi instance alongside project CLI tools:
+
+```bash
+nix flake init -t github:mateusdcc/nixpi#devshell
+nix develop
+```
+
+### 4. Learning & Deep Comprehension Shell (`#learning`)
+
+Bootstrap an Obsidian research and deep-learning development shell configured with Antigravity (Gemini 3.7 Flash) and comprehension skills:
+
+```bash
+nix flake init -t github:mateusdcc/nixpi#learning
+nix develop
+```
 
 ---
 

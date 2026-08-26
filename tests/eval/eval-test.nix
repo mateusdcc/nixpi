@@ -1,4 +1,8 @@
-{ pkgs, nixpiLib, obsidianModule ? null }:
+{
+  pkgs,
+  nixpiLib,
+  obsidianModule ? null,
+}:
 
 let
   lib = pkgs.lib;
