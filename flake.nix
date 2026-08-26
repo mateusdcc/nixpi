@@ -24,12 +24,27 @@
       lib = import ./lib {
         lib = nixpkgs.lib;
       };
+      bundledModules = [
+        ./modules
+        deep-comprehension-engine.piModules.extensions.obsidian
+        deep-comprehension-engine.piModules.skills.obsidianScreenshot
+        deep-comprehension-engine.piModules.skills.socraticTutor
+        deep-comprehension-engine.piModules.skills.feynmanTechnique
+        deep-comprehension-engine.piModules.skills.activeRecallNotes
+        deep-comprehension-engine.piModules.skills.literatureDeepDive
+        deep-comprehension-engine.piModules.skills.deepComprehensionEngine
+        deep-comprehension-engine.piModules.skills.giftedDiagnosticProbe
+        deep-comprehension-engine.piModules.skills.paginatedAtomicNotes
+        deep-comprehension-engine.piModules.skills.mermaidDiagrams
+      ];
     in
     {
       inherit lib;
 
       piModules = {
-        default = import ./modules;
+        default = {
+          imports = bundledModules;
+        };
         core = import ./modules/core/package.nix;
         profiles = {
           minimal = import ./modules/profiles/minimal.nix;
@@ -71,24 +86,64 @@
       };
 
       nixosModules = {
-        default = import ./integrations/nixos.nix;
-        pi = import ./integrations/nixos.nix;
+        default = {
+          imports = [
+            ./integrations/nixos.nix
+          ]
+          ++ bundledModules;
+        };
+        pi = {
+          imports = [
+            ./integrations/nixos.nix
+          ]
+          ++ bundledModules;
+        };
       };
 
       nixDarwinModules = {
-        default = import ./integrations/darwin.nix;
-        pi = import ./integrations/darwin.nix;
+        default = {
+          imports = [
+            ./integrations/darwin.nix
+          ]
+          ++ bundledModules;
+        };
+        pi = {
+          imports = [
+            ./integrations/darwin.nix
+          ]
+          ++ bundledModules;
+        };
       };
 
       homeModules = {
-        default = import ./integrations/home-manager.nix;
-        pi = import ./integrations/home-manager.nix;
+        default = {
+          imports = [
+            ./integrations/home-manager.nix
+          ]
+          ++ bundledModules;
+        };
+        pi = {
+          imports = [
+            ./integrations/home-manager.nix
+          ]
+          ++ bundledModules;
+        };
       };
 
       # Alias for backward compatibility
       homeManagerModules = {
-        default = import ./integrations/home-manager.nix;
-        pi = import ./integrations/home-manager.nix;
+        default = {
+          imports = [
+            ./integrations/home-manager.nix
+          ]
+          ++ bundledModules;
+        };
+        pi = {
+          imports = [
+            ./integrations/home-manager.nix
+          ]
+          ++ bundledModules;
+        };
       };
 
       templates = {
