@@ -70,6 +70,22 @@
         };
       };
 
+      nixosModules = {
+        default = import ./integrations/nixos.nix;
+        pi = import ./integrations/nixos.nix;
+      };
+
+      nixDarwinModules = {
+        default = import ./integrations/darwin.nix;
+        pi = import ./integrations/darwin.nix;
+      };
+
+      homeModules = {
+        default = import ./integrations/home-manager.nix;
+        pi = import ./integrations/home-manager.nix;
+      };
+
+      # Alias for backward compatibility
       homeManagerModules = {
         default = import ./integrations/home-manager.nix;
         pi = import ./integrations/home-manager.nix;
@@ -234,6 +250,35 @@
             inherit nixpiLib;
             legalResearchProfile = self.piModules.profiles.legalResearch;
           };
+        }
+      );
+
+      legacyPackages = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          nixpiLib = import ./lib {
+            lib = pkgs.lib;
+            inherit pkgs;
+          };
+        in
+        {
+          makePiWithModule =
+            {
+              module ? { },
+              modules ? [ ],
+              extraSpecialArgs ? { },
+            }:
+            nixpiLib.makePi {
+              inherit pkgs extraSpecialArgs;
+              modules = (if module != { } then [ module ] else [ ]) ++ modules;
+            };
+          makePi =
+            modules:
+            nixpiLib.makePi {
+              inherit pkgs;
+              modules = if builtins.isList modules then modules else [ modules ];
+            };
         }
       );
 
