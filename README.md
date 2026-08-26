@@ -13,6 +13,7 @@
 - [Home Manager Integration](#home-manager-integration)
 - [Development Shell (`nix develop`)](#development-shell-nix-develop)
 - [Folder-Specific Profiles & `direnv`](#folder-specific-profiles--direnv)
+- [Custom Environments](#custom-environments)
 - [Managing Extensions](#managing-extensions)
 - [Managing Skills (e.g. Conventional Commits, Socratic Tutor)](#managing-skills-eg-conventional-commits-socratic-tutor)
 - [Automatic Runtime Dependencies](#automatic-runtime-dependencies)
@@ -253,6 +254,165 @@ use flake
 ```
 
 Whenever you `cd` into that directory, `direnv` automatically activates the customized `pi` binary with only that profile's extensions, skills, and tools. When you leave, it reverts to your default shell.
+
+---
+
+## Custom Environments
+
+`nixpi` enables building dedicated, project-scoped custom AI environments that seamlessly activate when navigating into a workspace using `direnv` and `nix-direnv`.
+
+### 1. Workstation Foundation (`~/.config/nix-config/`)
+
+Enable `direnv` and `nix-direnv` globally in your Home Manager configuration (e.g. `modules/home/shell.nix`):
+
+```nix
+# modules/home/shell.nix
+{ pkgs, ... }:
+
+{
+  programs.direnv = {
+    enable = true;
+    nix-direnv.enable = true;
+    enableZshIntegration = true;
+    enableBashIntegration = true;
+  };
+}
+```
+
+Then configure your baseline `programs.pi` in `modules/home/pi/default.nix`:
+
+```nix
+# modules/home/pi/default.nix
+{ nixpi, pkgs, config, ... }:
+
+{
+  imports = [
+    nixpi.homeManagerModules.default
+  ];
+
+  programs.pi = {
+    enable = true;
+
+    providers.antigravity.enable = true;
+
+    settings = {
+      theme = "dark";
+      defaultProvider = config.programs.pi.providers.antigravity;
+      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
+      defaultThinkingLevel = "high";
+      steeringMode = "one-at-a-time";
+    };
+
+    extensions = {
+      echo.enable = true;
+      ripgrep-search.enable = true;
+      pi-gpt-search.enable = true;
+    };
+
+    runtimePackages = with pkgs; [
+      git
+      ripgrep
+      jq
+    ];
+  };
+}
+```
+
+### 2. Custom Deep-Learning Environment (`flake.nix` + `.envrc`)
+
+In your specialized workspace (e.g. `~/Projects/deep-learning-research` or Obsidian knowledge vault), define a custom `flake.nix` using `nixpi.lib.makePi` to compose specialized profiles, skills, model parameters, and domain toolchains:
+
+```nix
+# flake.nix
+{
+  description = "Custom Deep Learning & Research Environment";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpi.url = "github:mateusdcc/nixpi";
+  };
+
+  outputs = { self, nixpkgs, nixpi }:
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
+    in
+    {
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+
+          deepLearningPi = nixpi.lib.makePi {
+            inherit pkgs;
+            modules = [
+              # Import specialized learning and deep comprehension profile
+              nixpi.piModules.profiles.learning
+              (
+                { config, ... }:
+                {
+                  programs.pi = {
+                    providers.antigravity.enable = true;
+
+                    settings = {
+                      defaultProvider = config.programs.pi.providers.antigravity;
+                      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
+                      defaultThinkingLevel = "high";
+                      theme = "dark";
+                    };
+
+                    extensions = {
+                      obsidian = {
+                        enable = true;
+                        defaultVault = "/Users/mateusdcc/Projects/deep-learning-research";
+                      };
+                    };
+                  };
+                }
+              )
+            ];
+          };
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              deepLearningPi
+              pkgs.glow
+              pkgs.ripgrep
+              pkgs.jq
+              pkgs.curl
+              pkgs.python3
+              pkgs.mermaid-cli
+              pkgs.typst
+            ];
+
+            shellHook = ''
+              echo "[deep-learning-env] Deep Comprehension & Research Environment Active"
+              echo "  - Pi Agent: Configured with Antigravity (Gemini 3.7 Flash) & Learning Skills"
+              echo "  - Toolchain: Python 3, Typst, Mermaid CLI, Glow, Ripgrep, JQ"
+            '';
+          };
+        }
+      );
+    };
+}
+```
+
+### 3. Activating with `direnv`
+
+Create `.envrc` in the project directory:
+
+```bash
+echo "use flake" > .envrc
+direnv allow
+```
+
+Whenever you `cd` into the directory, `direnv` activates the customized `pi` binary with the exact deep-learning profile, model configurations, and runtime dependencies. Leaving the directory instantly restores your standard shell environment.
 
 ---
 
