@@ -34,7 +34,8 @@ let
 
   baseSettings = basePi.passthru.config.programs.pi.settings.defaultProvider == "anthropic";
   extendedHasSkill = extendedPi.passthru.config.programs.pi.skills.commit-style.enable == true;
-  extendedHasEnv = extendedPi.passthru.config.programs.pi.environment.variables.PI_EXTENDED_FLAG == "active";
+  extendedHasEnv =
+    extendedPi.passthru.config.programs.pi.environment.variables.PI_EXTENDED_FLAG == "active";
   chainedHasRipgrep = chainedPi.passthru.config.programs.pi.extensions.ripgrep-search.enable == true;
 
   allPass = baseSettings && extendedHasSkill && extendedHasEnv && chainedHasRipgrep;

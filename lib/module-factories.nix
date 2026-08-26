@@ -33,9 +33,7 @@
     in
     {
       options.programs.pi.extensions.${name} = {
-        enable = lib.mkEnableOption (
-          if description != null then description else "Pi ${name} extension"
-        );
+        enable = lib.mkEnableOption (if description != null then description else "Pi ${name} extension");
 
         package = lib.mkOption {
           type = lib.types.nullOr lib.types.package;
@@ -101,15 +99,12 @@
     in
     {
       options.programs.pi.skills.${name} = {
-        enable = lib.mkEnableOption (
-          if description != null then description else "Pi ${name} skill"
-        );
+        enable = lib.mkEnableOption (if description != null then description else "Pi ${name} skill");
 
         package = lib.mkOption {
           type = lib.types.nullOr lib.types.package;
           default = resolvedPkg;
-          defaultText =
-            if resolvedPkg != null then lib.literalExpression "pkgs.piSkills.${name}" else null;
+          defaultText = if resolvedPkg != null then lib.literalExpression "pkgs.piSkills.${name}" else null;
           description = "Package providing the ${name} skill.";
         };
 
@@ -159,9 +154,7 @@
     in
     {
       options.programs.pi.providers.${name} = {
-        enable = lib.mkEnableOption (
-          if description != null then description else "Pi ${name} provider"
-        );
+        enable = lib.mkEnableOption (if description != null then description else "Pi ${name} provider");
 
         package = lib.mkOption {
           type = lib.types.nullOr lib.types.package;
