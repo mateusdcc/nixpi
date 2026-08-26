@@ -246,6 +246,14 @@
           e2e-tests = pkgs.callPackage ./tests/e2e/e2e-test.nix {
             inherit nixpiLib;
           };
+          extend-tests = pkgs.callPackage ./tests/build/extend-test.nix {
+            inherit nixpiLib;
+          };
+          factory-tests = pkgs.callPackage ./tests/eval/factory-test.nix {
+            inherit nixpiLib;
+          };
+          nixos-tests = pkgs.callPackage ./tests/integration/nixos-test.nix { };
+          darwin-tests = pkgs.callPackage ./tests/integration/darwin-test.nix { };
           legal-research-tests = pkgs.callPackage ./tests/legal-research/legal-research-test.nix {
             inherit nixpiLib;
             legalResearchProfile = self.piModules.profiles.legalResearch;
