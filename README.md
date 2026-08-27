@@ -1,5 +1,8 @@
 # nixpi
 
+> [!IMPORTANT]
+> The legacy implementation currently on `main` is deprecated and will be replaced by the tested `edge` architecture on September 3, 2026. Preview it with `github:mateusdcc/nixpi/edge` and follow the [migration guide](https://github.com/mateusdcc/nixpi/blob/edge/docs/migrations/edge.md). Existing locked installations will not change until their flake input is explicitly updated.
+
 > Nix-native declarative configuration framework for the [Pi coding agent](https://pi.dev).
 
 `nixpi` provides a typed, declarative, reproducible configuration framework for the Pi coding agent, inspired by the architecture of projects like Nixvim.
