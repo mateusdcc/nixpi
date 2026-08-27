@@ -37,6 +37,7 @@ let
 
   compatibilityPathsExist =
     self.piModules.extensions ? obsidian
+    && self.piModules ? base
     && self.piModules.profiles ? learning
     && self.piModules.skills ? activeRecallNotes
     && self.piModules.skills ? deepComprehensionEngine

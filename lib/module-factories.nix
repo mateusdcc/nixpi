@@ -12,6 +12,7 @@
       settingsOptions ? { },
       settingsExample ? null,
       settingsDescription ? "Settings configuration for the ${name} extension.",
+      defaultText ? null,
       extraOptions ? { },
       extraConfig ? cfg: { },
     }:
@@ -35,13 +36,13 @@
       options.programs.pi.extensions.${name} = {
         enable = lib.mkEnableOption (if description != null then description else "Pi ${name} extension");
 
-        package = lib.mkOption {
-          type = lib.types.nullOr lib.types.package;
-          default = resolvedPkg;
-          defaultText =
-            if resolvedPkg != null then lib.literalExpression "pkgs.piExtensions.${name}" else null;
-          description = "Package providing the ${name} extension.";
-        };
+        package =
+          lib.mkOption {
+            type = lib.types.nullOr lib.types.package;
+            default = resolvedPkg;
+            description = "Package providing the ${name} extension.";
+          }
+          // lib.optionalAttrs (defaultText != null) { inherit defaultText; };
 
         runtimePackages = lib.mkOption {
           type = lib.types.listOf lib.types.package;
@@ -78,6 +79,7 @@
       defaultPackage ? null,
       runtimePackages ? [ ],
       extraPackages ? [ ],
+      defaultText ? null,
       extraOptions ? { },
       extraConfig ? cfg: { },
     }:
@@ -101,12 +103,13 @@
       options.programs.pi.skills.${name} = {
         enable = lib.mkEnableOption (if description != null then description else "Pi ${name} skill");
 
-        package = lib.mkOption {
-          type = lib.types.nullOr lib.types.package;
-          default = resolvedPkg;
-          defaultText = if resolvedPkg != null then lib.literalExpression "pkgs.piSkills.${name}" else null;
-          description = "Package providing the ${name} skill.";
-        };
+        package =
+          lib.mkOption {
+            type = lib.types.nullOr lib.types.package;
+            default = resolvedPkg;
+            description = "Package providing the ${name} skill.";
+          }
+          // lib.optionalAttrs (defaultText != null) { inherit defaultText; };
 
         runtimePackages = lib.mkOption {
           type = lib.types.listOf lib.types.package;

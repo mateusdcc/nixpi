@@ -1,23 +1,14 @@
-{
-  lib,
-  pkgs,
-  config,
-  ...
-}:
+args@{ lib, ... }:
 
 let
-  cfg = config.programs.pi.skills.competitor-gap-analysis;
-  defaultPkg = pkgs.callPackage ../../packages/skills/competitor-gap-analysis {
-    mkPiSkill = (pkgs.callPackage ../../lib/mk-resource.nix { }).mkPiSkill;
-  };
+  factories = import ../../lib/module-factories.nix { inherit lib; };
 in
-{
-  options.programs.pi.skills.competitor-gap-analysis = {
-    enable = lib.mkEnableOption "Pi competitor gap analysis skill";
-    package = lib.mkOption {
-      type = lib.types.package;
-      default = defaultPkg;
-      description = "Package providing the competitor-gap-analysis skill.";
+factories.mkPiSkillModule {
+  name = "competitor-gap-analysis";
+  description = "Pi competitor gap analysis skill";
+  defaultPackage =
+    pkgs:
+    pkgs.callPackage ../../packages/skills/competitor-gap-analysis {
+      mkPiSkill = (pkgs.callPackage ../../lib/mk-resource.nix { }).mkPiSkill;
     };
-  };
-}
+} args

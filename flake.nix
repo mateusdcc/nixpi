@@ -37,6 +37,7 @@
       piModules = {
         default = import ./modules;
         core = import ./modules/core/package.nix;
+        base = import ./modules/core;
         profiles = {
           minimal = import ./modules/profiles/minimal.nix;
           research = import ./modules/profiles/research.nix;
