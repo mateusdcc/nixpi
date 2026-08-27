@@ -111,6 +111,7 @@ Users should commit `flake.lock`, review warnings during updates, and build thei
 - [Getting started](docs/user-guide/getting-started.md)
 - [Generated option reference](docs/reference/flake-outputs.md)
 - [Architecture](docs/development/architecture.md)
+- [Container tests](docs/development/container-tests.md)
 - [Architecture decisions](docs/architecture-decisions/0002-nixvim-architectural-patterns.md)
 - [Edge migration](docs/migrations/edge.md)
 

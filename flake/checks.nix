@@ -13,6 +13,7 @@
         lib = pkgs.lib;
         inherit pkgs;
       };
+      containerSuite = pkgs.callPackage ../containers { inherit nixpiLib; };
     in
     {
       eval-tests = pkgs.callPackage ../tests/eval/eval-test.nix { inherit nixpiLib; };
@@ -35,6 +36,7 @@
     // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
       nixos-tests = pkgs.callPackage ../tests/integration/nixos-test.nix { inherit self system; };
     }
+    // containerSuite.checks
     // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isDarwin {
       darwin-tests = pkgs.callPackage ../tests/integration/darwin-test.nix { inherit self system; };
     }

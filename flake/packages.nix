@@ -18,8 +18,9 @@
       mkExt = nixpiLib.mkPiExtension;
       mkSkill = nixpiLib.mkPiSkill;
       mkPrompt = nixpiLib.mkPiPrompt;
+      containerSuite = pkgs.callPackage ../containers { inherit nixpiLib; };
     in
-    rec {
+    (rec {
       default = nixpiLib.makePi {
         inherit pkgs;
         modules = [ self.piModules.default ];
@@ -125,6 +126,7 @@
         deprecated "packages.${system}.skill-mermaid-diagrams"
           "deep-comprehension-engine.packages.${system}.skill-mermaid-diagrams"
           deepComprehensionEngine.packages.${system}.skill-mermaid-diagrams;
-    }
+    })
+    // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux containerSuite.images
   );
 }

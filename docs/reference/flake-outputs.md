@@ -5,6 +5,7 @@
 | `packages.<system>.default` | Configured Pi executable |
 | `packages.<system>.legal-research` | Legal research profile |
 | `packages.<system>.docs` | Generated option and project documentation |
+| `packages.<linux-system>.docker-*` | Tested minimal, features, and provider CI images |
 | `piModules.default` | Complete standalone module |
 | `piModules.base` | Reusable core without bundled features |
 | `piModules.profiles.*` | Curated configurations |
