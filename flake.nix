@@ -24,8 +24,9 @@
       lib = import ./lib {
         lib = nixpkgs.lib;
       };
+      deprecationWarning = "nixpi: `main` is deprecated in favor of `edge` and will be replaced on September 3, 2026. Update the input to github:mateusdcc/nixpi/edge and follow https://github.com/mateusdcc/nixpi/blob/edge/docs/migrations/edge.md.";
     in
-    {
+    nixpkgs.lib.warn deprecationWarning {
       inherit lib;
 
       piModules = {
