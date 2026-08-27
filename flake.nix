@@ -23,16 +23,29 @@
       ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
 
-      deprecated =
-        old: replacement: value:
-        nixpkgs.lib.warn "nixpi: `${old}` is deprecated; use `${replacement}`. It remains available throughout 1.x." value;
-
-      lib = import ./lib {
-        lib = nixpkgs.lib;
+      nixpiLib = nixpkgs.lib.makeExtensible (
+        _:
+        import ./lib {
+          lib = nixpkgs.lib;
+        }
+      );
+      overlay = final: _: {
+        nixpi = self.packages.${final.stdenv.hostPlatform.system};
       };
+      lib = nixpiLib // {
+        nixpi = nixpiLib;
+        inherit overlay;
+      };
+      deprecated =
+        old: replacement:
+        nixpiLib.deprecation.warn {
+          inherit old replacement;
+        };
     in
     {
       inherit lib;
+
+      overlays.default = overlay;
 
       piModules = {
         default = import ./modules;

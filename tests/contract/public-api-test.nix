@@ -34,9 +34,19 @@ let
     pname = "contract-extension";
     src = pkgs.writeTextDir "extensions/index.js" "export default {};";
   };
+  overlaidPkgs = import self.inputs.nixpkgs {
+    inherit (pkgs.stdenv.hostPlatform) system;
+    overlays = [ self.overlays.default ];
+  };
 
   compatibilityPathsExist =
-    self.piModules.extensions ? obsidian
+    self.lib ? nixpi
+    && self.lib.nixpi ? evalPi
+    && self.lib.nixpi ? deprecation
+    && self.overlays ? default
+    && overlaidPkgs ? nixpi
+    && overlaidPkgs.nixpi ? default
+    && self.piModules.extensions ? obsidian
     && self.piModules ? base
     && self.piModules.profiles ? learning
     && self.piModules.skills ? activeRecallNotes

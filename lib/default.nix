@@ -4,6 +4,7 @@
 }:
 
 let
+  deprecation = import ./deprecation.nix { inherit lib; };
   factories = import ./module-factories.nix { inherit lib; };
   withPkgs =
     builder: args:
@@ -13,6 +14,8 @@ let
     builder resolvedPkgs (builtins.removeAttrs args [ "pkgs" ]);
 in
 {
+  inherit deprecation;
+
   evalPi =
     {
       pkgs,
