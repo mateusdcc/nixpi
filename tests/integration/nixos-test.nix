@@ -1,47 +1,38 @@
-{ pkgs }:
+{
+  pkgs,
+  self,
+  system,
+}:
 
 let
-  lib = pkgs.lib;
-
-  # Minimal mock of NixOS module options
-  mockNixOSModule = {
-    options.environment = {
-      systemPackages = lib.mkOption {
-        type = lib.types.listOf lib.types.package;
-        default = [ ];
-      };
-      sessionVariables = lib.mkOption {
-        type = lib.types.attrsOf lib.types.str;
-        default = { };
-      };
-    };
-  };
-
-  evaluated = lib.evalModules {
+  configuration = self.inputs.nixpkgs.lib.nixosSystem {
     modules = [
-      mockNixOSModule
-      ../../integrations/nixos.nix
+      self.nixosModules.default
       {
+        nixpkgs.hostPlatform = system;
+        system.stateVersion = "26.05";
+        boot.loader.systemd-boot.enable = true;
+        fileSystems."/" = {
+          fsType = "none";
+          device = "/non-existent/nixpi-test-device";
+        };
         programs.pi = {
           enable = true;
           settings.defaultProvider = "openai";
-          environment.variables.PI_NIXOS_FLAG = "enabled";
+          environment.variables.PI_NIXOS_TEST = "enabled";
           extensions.echo.enable = true;
         };
       }
     ];
-    specialArgs = {
-      inherit pkgs;
-    };
   };
 
-  cfg = evaluated.config;
-  hasPackage = lib.length cfg.environment.systemPackages > 0;
-  hasEnvVar = cfg.environment.sessionVariables.PI_NIXOS_FLAG == "enabled";
-
-  allPass = hasPackage && hasEnvVar;
+  cfg = configuration.config;
+  allPass =
+    cfg.nixpkgs.hostPlatform.system == system
+    && builtins.elem cfg.programs.pi.finalPackage cfg.environment.systemPackages
+    && cfg.environment.sessionVariables.PI_NIXOS_TEST == "enabled";
 in
-pkgs.runCommand "nixpi-nixos-test" { } ''
-  ${lib.optionalString (!allPass) "echo 'NixOS integration test failed' >&2; exit 1"}
+pkgs.runCommand "nixpi-nixos-integration-test" { } ''
+  ${pkgs.lib.optionalString (!allPass) "echo 'NixOS integration test failed' >&2; exit 1"}
   echo "NixOS integration test passed" > "$out"
 ''

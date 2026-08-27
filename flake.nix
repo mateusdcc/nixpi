@@ -3,6 +3,14 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    nix-darwin = {
+      url = "github:nix-darwin/nix-darwin";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     deep-comprehension-engine = {
       url = "github:mateusdcc/deep-comprehension-engine";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -13,8 +21,8 @@
     {
       self,
       nixpkgs,
-      deep-comprehension-engine,
-    }:
+      ...
+    }@inputs:
     let
       systems = [
         "x86_64-linux"
@@ -49,7 +57,7 @@
     }
     // import ./flake/modules.nix {
       inherit self deprecated;
-      deepComprehensionEngine = deep-comprehension-engine;
+      deepComprehensionEngine = inputs.deep-comprehension-engine;
     }
     // import ./flake/templates.nix
     // import ./flake/packages.nix {
@@ -59,7 +67,7 @@
         systems
         deprecated
         ;
-      deepComprehensionEngine = deep-comprehension-engine;
+      deepComprehensionEngine = inputs.deep-comprehension-engine;
     }
     // import ./flake/checks.nix { inherit self nixpkgs systems; }
     // import ./flake/legacy-packages.nix { inherit nixpkgs systems; };

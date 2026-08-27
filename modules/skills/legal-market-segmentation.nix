@@ -1,4 +1,9 @@
-args@{ lib, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   factories = import ../../lib/module-factories.nix { inherit lib; };
@@ -11,4 +16,4 @@ factories.mkPiSkillModule {
     pkgs.callPackage ../../packages/skills/legal-market-segmentation {
       mkPiSkill = (pkgs.callPackage ../../lib/mk-resource.nix { }).mkPiSkill;
     };
-} args
+} { inherit config lib pkgs; }

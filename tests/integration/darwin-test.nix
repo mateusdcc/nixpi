@@ -1,47 +1,33 @@
-{ pkgs }:
+{
+  pkgs,
+  self,
+  system,
+}:
 
 let
-  lib = pkgs.lib;
-
-  # Minimal mock of nix-darwin module options
-  mockDarwinModule = {
-    options.environment = {
-      systemPackages = lib.mkOption {
-        type = lib.types.listOf lib.types.package;
-        default = [ ];
-      };
-      variables = lib.mkOption {
-        type = lib.types.attrsOf lib.types.str;
-        default = { };
-      };
-    };
-  };
-
-  evaluated = lib.evalModules {
+  configuration = self.inputs.nix-darwin.lib.darwinSystem {
     modules = [
-      mockDarwinModule
-      ../../integrations/darwin.nix
+      self.nixDarwinModules.default
       {
+        nixpkgs.hostPlatform = system;
+        system.stateVersion = 6;
         programs.pi = {
           enable = true;
           settings.defaultProvider = "anthropic";
-          environment.variables.PI_DARWIN_FLAG = "enabled";
+          environment.variables.PI_DARWIN_TEST = "enabled";
           extensions.echo.enable = true;
         };
       }
     ];
-    specialArgs = {
-      inherit pkgs;
-    };
   };
 
-  cfg = evaluated.config;
-  hasPackage = lib.length cfg.environment.systemPackages > 0;
-  hasEnvVar = cfg.environment.variables.PI_DARWIN_FLAG == "enabled";
-
-  allPass = hasPackage && hasEnvVar;
+  cfg = configuration.config;
+  allPass =
+    cfg.nixpkgs.hostPlatform.system == system
+    && builtins.elem cfg.programs.pi.finalPackage cfg.environment.systemPackages
+    && cfg.environment.variables.PI_DARWIN_TEST == "enabled";
 in
-pkgs.runCommand "nixpi-darwin-test" { } ''
-  ${lib.optionalString (!allPass) "echo 'nix-darwin integration test failed' >&2; exit 1"}
+pkgs.runCommand "nixpi-darwin-integration-test" { } ''
+  ${pkgs.lib.optionalString (!allPass) "echo 'nix-darwin integration test failed' >&2; exit 1"}
   echo "nix-darwin integration test passed" > "$out"
 ''
