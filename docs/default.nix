@@ -6,18 +6,23 @@ let
     options = builtins.removeAttrs evaluated.options [ "_module" ];
   };
 in
-pkgs.runCommand "nixpi-documentation" { } ''
+pkgs.runCommand "nixpi-documentation"
+  {
+    nativeBuildInputs = [ pkgs.mdbook ];
+  }
+  ''
   destination="$out/share/doc/nixpi"
-  mkdir -p "$destination"
+  source="$TMPDIR/book"
+  sourceDirectory="$source/src"
+  mkdir -p "$destination" "$sourceDirectory/reference"
 
   install -Dm644 ${optionsDoc.optionsCommonMark} "$destination/options.md"
-  install -Dm644 ${../README.md} "$destination/README.md"
-  install -Dm644 ${../CONTRIBUTING.md} "$destination/CONTRIBUTING.md"
-  install -Dm644 ${../MAINTAINING.md} "$destination/MAINTAINING.md"
-  install -Dm644 ${../SECURITY.md} "$destination/SECURITY.md"
-  cp -R ${./architecture-decisions} "$destination/architecture-decisions"
-  cp -R ${./development} "$destination/development"
-  cp -R ${./migrations} "$destination/migrations"
-  cp -R ${./reference} "$destination/reference"
-  cp -R ${./user-guide} "$destination/user-guide"
-''
+  cp -R ${./.}/. "$sourceDirectory"
+  install -Dm644 ${./book.toml} "$source/book.toml"
+  install -Dm644 ${optionsDoc.optionsCommonMark} "$sourceDirectory/reference/options.md"
+  install -Dm644 ${../README.md} "$sourceDirectory/reference/readme.md"
+  install -Dm644 ${../CONTRIBUTING.md} "$sourceDirectory/reference/contributing.md"
+  install -Dm644 ${../MAINTAINING.md} "$sourceDirectory/reference/maintaining.md"
+  install -Dm644 ${../SECURITY.md} "$sourceDirectory/reference/security.md"
+    mdbook build "$source" --dest-dir "$destination/html"
+  ''

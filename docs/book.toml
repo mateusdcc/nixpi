@@ -1,0 +1,13 @@
+[book]
+authors = ["nixpi contributors"]
+language = "en"
+src = "src"
+title = "nixpi"
+
+[output.html]
+git-repository-url = "https://github.com/mateusdcc/nixpi"
+edit-url-template = "https://github.com/mateusdcc/nixpi/edit/edge/{path}"
+site-url = "/nixpi/"
+
+[output.html.search]
+enable = true

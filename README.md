@@ -108,12 +108,13 @@ Users should commit `flake.lock`, review warnings during updates, and build thei
 
 ## Documentation
 
+- [Documentation website](https://mateusdcc.github.io/nixpi/)
 - [Getting started](docs/user-guide/getting-started.md)
-- [Generated option reference](docs/reference/flake-outputs.md)
-- [Architecture](docs/development/architecture.md)
-- [Container tests](docs/development/container-tests.md)
-- [Architecture decisions](docs/architecture-decisions/0002-nixvim-architectural-patterns.md)
-- [Edge migration](docs/migrations/edge.md)
+- [Usage and direnv](docs/user-guide/usage.md)
+- [Templates](docs/user-guide/templates.md)
+- [Library API](docs/reference/library.md)
+- [Generated option reference](docs/reference/options.md)
+- [FAQ](docs/faq.md)
 
 Build the complete documentation bundle, including options generated from the live module schema:
 
