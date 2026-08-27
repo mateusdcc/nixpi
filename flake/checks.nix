@@ -30,6 +30,7 @@
         legalResearchProfile = self.piModules.profiles.legalResearch;
       };
       public-api-tests = pkgs.callPackage ../tests/contract/public-api-test.nix { inherit self; };
+      documentation = self.packages.${system}.docs;
     }
     // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
       nixos-tests = pkgs.callPackage ../tests/integration/nixos-test.nix { inherit self system; };

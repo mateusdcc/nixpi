@@ -30,6 +30,8 @@
         modules = [ self.piModules.profiles.legalResearch ];
       };
 
+      docs = pkgs.callPackage ../docs { inherit nixpiLib; };
+
       learning =
         deprecated "packages.${system}.learning" "deep-comprehension-engine.packages.${system}.default"
           (
