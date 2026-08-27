@@ -8,14 +8,15 @@
 let
   cfg = config.programs.pi;
 
-  # Helper to remove null values recursively
+  # Helper to remove null values recursively from attribute sets and lists.
   filterNulls =
-    attrs:
-    lib.filterAttrs (n: v: v != null) (
-      builtins.mapAttrs (
-        n: v: if builtins.isAttrs v && !lib.isDerivation v then filterNulls v else v
-      ) attrs
-    );
+    value:
+    if builtins.isAttrs value && !lib.isDerivation value then
+      lib.filterAttrs (_: v: v != null) (builtins.mapAttrs (_: v: filterNulls v) value)
+    else if builtins.isList value then
+      map filterNulls (builtins.filter (v: v != null) value)
+    else
+      value;
 
   # Collect packages and runtimePackages from enabled typed extensions
   enabledExtensions = lib.filterAttrs (n: ext: ext.enable or false) (cfg.extensions or { });

@@ -63,5 +63,10 @@ pkgs.runCommand "nixpi-build-test" { } ''
   test -f "${configuredPi.modelsJson}"
   grep -q "commit-style" "${configuredPi.settingsJson}"
   grep -q "test-skill" "${configuredPi.settingsJson}"
-  echo "Build test successfully verified configured package, skills, and settings" > "$out"
+  grep -q '"test-model"' "${configuredPi.modelsJson}"
+  if grep -q 'null' "${configuredPi.modelsJson}"; then
+    echo "Generated models.json contains null values" >&2
+    exit 1
+  fi
+  echo "Build test successfully verified configured package, skills, settings, and models" > "$out"
 ''
