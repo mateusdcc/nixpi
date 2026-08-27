@@ -12,6 +12,9 @@ pkgs.runCommand "nixpi-documentation" { } ''
 
   install -Dm644 ${optionsDoc.optionsCommonMark} "$destination/options.md"
   install -Dm644 ${../README.md} "$destination/README.md"
+  install -Dm644 ${../CONTRIBUTING.md} "$destination/CONTRIBUTING.md"
+  install -Dm644 ${../MAINTAINING.md} "$destination/MAINTAINING.md"
+  install -Dm644 ${../SECURITY.md} "$destination/SECURITY.md"
   cp -R ${./architecture-decisions} "$destination/architecture-decisions"
   cp -R ${./development} "$destination/development"
   cp -R ${./migrations} "$destination/migrations"
