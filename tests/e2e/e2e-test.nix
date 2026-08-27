@@ -18,6 +18,7 @@ let
           environment.variables = {
             PI_TEST_ENV_VAR = "nixpi-verified";
           };
+          environment.required = [ "NIXPI_REQUIRED_TEST" ];
         };
       }
     ];
@@ -38,7 +39,15 @@ pkgs.runCommand "nixpi-e2e-test"
     export PI_SKIP_VERSION_CHECK=1
     export PI_TELEMETRY=0
 
-    # 1. Test version output
+    # 1. Required environment variables fail fast with actionable output
+    if "${configuredPi}/bin/pi" --version 2> required-env-error; then
+      echo "Error: pi started without its required environment" >&2
+      exit 1
+    fi
+    grep -q "required environment variable NIXPI_REQUIRED_TEST is not set" required-env-error
+    export NIXPI_REQUIRED_TEST=verified
+
+    # 2. Test version output
     VERSION_OUTPUT=$("${configuredPi}/bin/pi" --version)
     echo "Reported Pi version: $VERSION_OUTPUT"
     if [ -z "$VERSION_OUTPUT" ]; then
@@ -46,13 +55,13 @@ pkgs.runCommand "nixpi-e2e-test"
       exit 1
     fi
 
-    # 2. Verify wrapper script contains ripgrep in PATH
+    # 3. Verify wrapper script contains ripgrep in PATH
     grep -q "ripgrep" "${configuredPi}/bin/pi" || (echo "Error: ripgrep was not in pi wrapper PATH" >&2; exit 1)
 
-    # 3. Test safe non-network model listing with offline flag
+    # 4. Test safe non-network model listing with offline flag
     "${configuredPi}/bin/pi" --list-models || true
 
-    # 4. Verify mutable state: Ensure auth.json and config were created in writable location
+    # 5. Verify mutable state: Ensure auth.json and config were created in writable location
     test -d "$XDG_DATA_HOME/nixpi/agent"
     test -f "$XDG_DATA_HOME/nixpi/agent/settings.json"
 

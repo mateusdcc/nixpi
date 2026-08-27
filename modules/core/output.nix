@@ -158,6 +158,19 @@ let
     lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") allEnvVars
   );
 
+  requiredEnvChecks = lib.optionalString (cfg.environment.required != [ ]) ''
+    missingRequired=0
+    for requiredName in ${lib.concatMapStringsSep " " lib.escapeShellArg cfg.environment.required}; do
+      if [ -z "$(printenv "$requiredName" || true)" ]; then
+        printf 'nixpi: required environment variable %s is not set\n' "$requiredName" >&2
+        missingRequired=1
+      fi
+    done
+    if [ "$missingRequired" -ne 0 ]; then
+      exit 1
+    fi
+  '';
+
   pathPrefix = lib.makeBinPath allRuntimePackages;
 
   wrapper = pkgs.writeShellScriptBin "pi" ''
@@ -171,6 +184,9 @@ let
 
     # Export user environment variables
     ${envExports}
+
+    # Fail before startup when required credentials or configuration are missing
+    ${requiredEnvChecks}
 
     # If PI_CODING_AGENT_DIR is not explicitly overridden, manage a writable state directory
     if [ -z "''${PI_CODING_AGENT_DIR:-}" ]; then
