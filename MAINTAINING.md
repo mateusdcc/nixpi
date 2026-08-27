@@ -33,4 +33,6 @@ Do not edit generated release notes or generated option documentation in source.
 
 ## Supported systems
 
-CI evaluates all declared systems and builds on x86_64 Linux, ARM Linux, and Apple Silicon macOS. A system is supported only when its native CI job is required and passing.
+CI evaluates all declared systems and builds on x86_64 Linux, ARM Linux, Intel macOS, and Apple Silicon macOS. A system is supported only when its native CI job is required and passing.
+
+Intel macOS uses the Nixpkgs 26.05 Darwin branch, which receives security fixes through the end of 2026. Reassess its support plan before that maintenance window closes.

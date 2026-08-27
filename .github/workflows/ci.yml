@@ -31,6 +31,7 @@ jobs:
         runner:
           - ubuntu-latest
           - ubuntu-24.04-arm
+          - macos-15-intel
           - macos-15
     runs-on: ${{ matrix.runner }}
     steps:

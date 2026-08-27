@@ -8,8 +8,9 @@
 }:
 
 let
+  duckdbPython = import ../../../lib/duckdb-python.nix { inherit pkgs python3; };
   pyEnv = python3.withPackages (ps: [
-    ps.duckdb
+    duckdbPython
     ps.youtube-transcript-api
   ]);
 in
