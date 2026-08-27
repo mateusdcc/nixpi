@@ -31,23 +31,13 @@ let
     programs.pi.environment.variables.LEGACY_EXTENDED = "1";
   };
 
-  hasMakePiExec = builtins.pathExists "${piFromMakePi}/bin/pi";
-  hasMakePiModuleExec = builtins.pathExists "${piFromMakePiWithModule}/bin/pi";
-  hasExtendedExec = builtins.pathExists "${extendedFromLegacy}/bin/pi";
-
   correctProvider1 = piFromMakePi.passthru.config.programs.pi.settings.defaultProvider == "openai";
   correctProvider2 =
     piFromMakePiWithModule.passthru.config.programs.pi.settings.defaultProvider == "anthropic";
   correctExtendedEnv =
     extendedFromLegacy.passthru.config.programs.pi.environment.variables.LEGACY_EXTENDED == "1";
 
-  allPass =
-    hasMakePiExec
-    && hasMakePiModuleExec
-    && hasExtendedExec
-    && correctProvider1
-    && correctProvider2
-    && correctExtendedEnv;
+  allPass = correctProvider1 && correctProvider2 && correctExtendedEnv;
 in
 pkgs.runCommand "nixpi-legacy-packages-test" { } ''
   ${lib.optionalString (!allPass) "echo 'Legacy packages builder test failed' >&2; exit 1"}

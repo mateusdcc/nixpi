@@ -3,21 +3,29 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    deep-comprehension-engine = {
+      url = "github:mateusdcc/deep-comprehension-engine";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
     {
       self,
       nixpkgs,
+      deep-comprehension-engine,
     }:
     let
       systems = [
         "x86_64-linux"
         "aarch64-linux"
-        "x86_64-darwin"
         "aarch64-darwin"
       ];
       forAllSystems = f: nixpkgs.lib.genAttrs systems (system: f system);
+
+      deprecated =
+        old: replacement: value:
+        nixpkgs.lib.warn "nixpi: `${old}` is deprecated; use `${replacement}`. It remains available throughout 1.x." value;
 
       lib = import ./lib {
         lib = nixpkgs.lib;
@@ -33,6 +41,9 @@
           minimal = import ./modules/profiles/minimal.nix;
           research = import ./modules/profiles/research.nix;
           legalResearch = import ./modules/profiles/legal-research.nix;
+          learning =
+            deprecated "piModules.profiles.learning" "deep-comprehension-engine.piModules.default"
+              deep-comprehension-engine.piModules.default;
         };
         extensions = {
           echo = import ./modules/extensions/echo.nix;
@@ -40,6 +51,9 @@
           plan-mode = import ./modules/extensions/plan-mode.nix;
           pi-gpt-search = import ./modules/extensions/pi-gpt-search.nix;
           researchTools = import ./modules/extensions/research-tools.nix;
+          obsidian =
+            deprecated "piModules.extensions.obsidian" "deep-comprehension-engine.piModules.extensions.obsidian"
+              deep-comprehension-engine.piModules.extensions.obsidian;
         };
         skills = {
           commit-style = import ./modules/skills/commit-style.nix;
@@ -51,6 +65,42 @@
           brazilLocalizationTest = import ./modules/skills/brazil-localization-test.nix;
           opportunityScoring = import ./modules/skills/opportunity-scoring.nix;
           productOpportunityReport = import ./modules/skills/product-opportunity-report.nix;
+          obsidianScreenshot =
+            deprecated "piModules.skills.obsidianScreenshot"
+              "deep-comprehension-engine.piModules.skills.obsidianScreenshot"
+              deep-comprehension-engine.piModules.skills.obsidianScreenshot;
+          socraticTutor =
+            deprecated "piModules.skills.socraticTutor"
+              "deep-comprehension-engine.piModules.skills.socraticTutor"
+              deep-comprehension-engine.piModules.skills.socraticTutor;
+          feynmanTechnique =
+            deprecated "piModules.skills.feynmanTechnique"
+              "deep-comprehension-engine.piModules.skills.feynmanTechnique"
+              deep-comprehension-engine.piModules.skills.feynmanTechnique;
+          activeRecallNotes =
+            deprecated "piModules.skills.activeRecallNotes"
+              "deep-comprehension-engine.piModules.skills.activeRecallNotes"
+              deep-comprehension-engine.piModules.skills.activeRecallNotes;
+          literatureDeepDive =
+            deprecated "piModules.skills.literatureDeepDive"
+              "deep-comprehension-engine.piModules.skills.literatureDeepDive"
+              deep-comprehension-engine.piModules.skills.literatureDeepDive;
+          deepComprehensionEngine =
+            deprecated "piModules.skills.deepComprehensionEngine"
+              "deep-comprehension-engine.piModules.skills.deepComprehensionEngine"
+              deep-comprehension-engine.piModules.skills.deepComprehensionEngine;
+          giftedDiagnosticProbe =
+            deprecated "piModules.skills.giftedDiagnosticProbe"
+              "deep-comprehension-engine.piModules.skills.giftedDiagnosticProbe"
+              deep-comprehension-engine.piModules.skills.giftedDiagnosticProbe;
+          paginatedAtomicNotes =
+            deprecated "piModules.skills.paginatedAtomicNotes"
+              "deep-comprehension-engine.piModules.skills.paginatedAtomicNotes"
+              deep-comprehension-engine.piModules.skills.paginatedAtomicNotes;
+          mermaidDiagrams =
+            deprecated "piModules.skills.mermaidDiagrams"
+              "deep-comprehension-engine.piModules.skills.mermaidDiagrams"
+              deep-comprehension-engine.piModules.skills.mermaidDiagrams;
         };
         providers = {
           antigravity = import ./modules/providers/antigravity.nix;
@@ -88,6 +138,10 @@
           path = ./templates/devshell;
           description = "Project-specific development shell with Pi";
         };
+        learning = {
+          path = ./templates/learning;
+          description = "Deprecated learning environment compatibility template";
+        };
       };
 
       packages = forAllSystems (
@@ -117,6 +171,15 @@
             ];
           };
 
+          learning =
+            deprecated "packages.${system}.learning" "deep-comprehension-engine.packages.${system}.default"
+              (
+                nixpiLib.makePi {
+                  inherit pkgs;
+                  modules = [ deep-comprehension-engine.piModules.default ];
+                }
+              );
+
           pi-unwrapped = pkgs.callPackage ./packages/pi { };
 
           echo = pkgs.callPackage ./packages/extensions/echo {
@@ -134,6 +197,10 @@
           research-tools = pkgs.callPackage ./packages/extensions/research-tools {
             mkPiExtension = mkExt;
           };
+          obsidian =
+            deprecated "packages.${system}.obsidian"
+              "deep-comprehension-engine.packages.${system}.extension-obsidian"
+              deep-comprehension-engine.packages.${system}.extension-obsidian;
           antigravity = pkgs.callPackage ./packages/providers/antigravity {
             mkPiExtension = mkExt;
           };
@@ -175,6 +242,44 @@
           skill-product-opportunity-report = pkgs.callPackage ./packages/skills/product-opportunity-report {
             mkPiSkill = mkSkill;
           };
+
+          obsidian-screenshot =
+            deprecated "packages.${system}.obsidian-screenshot"
+              "deep-comprehension-engine.packages.${system}.skill-obsidian-screenshot"
+              deep-comprehension-engine.packages.${system}.skill-obsidian-screenshot;
+          skill-obsidian-screenshot = obsidian-screenshot;
+          skill-socratic-tutor =
+            deprecated "packages.${system}.skill-socratic-tutor"
+              "deep-comprehension-engine.packages.${system}.skill-socratic-tutor"
+              deep-comprehension-engine.packages.${system}.skill-socratic-tutor;
+          skill-feynman-technique =
+            deprecated "packages.${system}.skill-feynman-technique"
+              "deep-comprehension-engine.packages.${system}.skill-feynman-technique"
+              deep-comprehension-engine.packages.${system}.skill-feynman-technique;
+          skill-active-recall-notes =
+            deprecated "packages.${system}.skill-active-recall-notes"
+              "deep-comprehension-engine.packages.${system}.skill-active-recall-notes"
+              deep-comprehension-engine.packages.${system}.skill-active-recall-notes;
+          skill-literature-deep-dive =
+            deprecated "packages.${system}.skill-literature-deep-dive"
+              "deep-comprehension-engine.packages.${system}.skill-literature-deep-dive"
+              deep-comprehension-engine.packages.${system}.skill-literature-deep-dive;
+          skill-deep-comprehension-engine =
+            deprecated "packages.${system}.skill-deep-comprehension-engine"
+              "deep-comprehension-engine.packages.${system}.skill-deep-comprehension-engine"
+              deep-comprehension-engine.packages.${system}.skill-deep-comprehension-engine;
+          skill-gifted-diagnostic-probe =
+            deprecated "packages.${system}.skill-gifted-diagnostic-probe"
+              "deep-comprehension-engine.packages.${system}.skill-gifted-diagnostic-probe"
+              deep-comprehension-engine.packages.${system}.skill-gifted-diagnostic-probe;
+          skill-paginated-atomic-notes =
+            deprecated "packages.${system}.skill-paginated-atomic-notes"
+              "deep-comprehension-engine.packages.${system}.skill-paginated-atomic-notes"
+              deep-comprehension-engine.packages.${system}.skill-paginated-atomic-notes;
+          skill-mermaid-diagrams =
+            deprecated "packages.${system}.skill-mermaid-diagrams"
+              "deep-comprehension-engine.packages.${system}.skill-mermaid-diagrams"
+              deep-comprehension-engine.packages.${system}.skill-mermaid-diagrams;
         }
       );
 
@@ -215,6 +320,9 @@
           legal-research-tests = pkgs.callPackage ./tests/legal-research/legal-research-test.nix {
             inherit nixpiLib;
             legalResearchProfile = self.piModules.profiles.legalResearch;
+          };
+          public-api-tests = pkgs.callPackage ./tests/contract/public-api-test.nix {
+            inherit self;
           };
         }
       );

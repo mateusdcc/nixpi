@@ -4,8 +4,13 @@
 }:
 
 let
-  mkResource = if pkgs != null then import ./mk-resource.nix { inherit lib pkgs; } else { };
   factories = import ./module-factories.nix { inherit lib; };
+  withPkgs =
+    builder: args:
+    let
+      resolvedPkgs = if pkgs != null then pkgs else args.pkgs or (throw "nixpi: `pkgs` is required");
+    in
+    builder resolvedPkgs (builtins.removeAttrs args [ "pkgs" ]);
 in
 {
   evalPi =
@@ -28,21 +33,45 @@ in
       inherit pkgs modules extraSpecialArgs;
     };
 
-  mkPiExtension =
-    if pkgs != null then
-      import ./mk-extension.nix { inherit lib pkgs; }
-    else
-      args: import ./mk-extension.nix args;
+  mkPiExtension = withPkgs (
+    resolvedPkgs:
+    import ./mk-extension.nix {
+      pkgs = resolvedPkgs;
+      inherit lib;
+    }
+  );
 
-  mkPiProvider =
-    if pkgs != null then
-      import ./mk-provider.nix { inherit lib pkgs; }
-    else
-      args: import ./mk-provider.nix args;
+  mkPiProvider = withPkgs (
+    resolvedPkgs:
+    import ./mk-provider.nix {
+      pkgs = resolvedPkgs;
+      inherit lib;
+    }
+  );
 
-  mkPiSkill = mkResource.mkPiSkill or null;
-  mkPiPrompt = mkResource.mkPiPrompt or null;
-  mkPiTheme = mkResource.mkPiTheme or null;
+  mkPiSkill = withPkgs (
+    resolvedPkgs:
+    (import ./mk-resource.nix {
+      pkgs = resolvedPkgs;
+      inherit lib;
+    }).mkPiSkill
+  );
+
+  mkPiPrompt = withPkgs (
+    resolvedPkgs:
+    (import ./mk-resource.nix {
+      pkgs = resolvedPkgs;
+      inherit lib;
+    }).mkPiPrompt
+  );
+
+  mkPiTheme = withPkgs (
+    resolvedPkgs:
+    (import ./mk-resource.nix {
+      pkgs = resolvedPkgs;
+      inherit lib;
+    }).mkPiTheme
+  );
 
   inherit (factories)
     mkPiExtensionModule
