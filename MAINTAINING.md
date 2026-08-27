@@ -6,7 +6,7 @@
 - `edge` is the release candidate for the next stable update.
 - Version tags use Semantic Versioning and the form `vMAJOR.MINOR.PATCH`.
 
-The edge architecture is scheduled for promotion to `main` on September 3, 2026, after one week of public transition testing.
+The edge architecture is scheduled for promotion to `main` on August 29, 2026, after public transition testing.
 
 ## Compatibility policy
 
