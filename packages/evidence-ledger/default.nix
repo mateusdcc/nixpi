@@ -5,7 +5,8 @@
 }:
 
 let
-  pyEnv = python3.withPackages (ps: [ ps.duckdb ]);
+  duckdbPython = import ../../lib/duckdb-python.nix { inherit pkgs python3; };
+  pyEnv = python3.withPackages (_: [ duckdbPython ]);
 in
 pkgs.stdenv.mkDerivation {
   pname = "pi-evidence-ledger";

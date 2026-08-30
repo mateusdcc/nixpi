@@ -1,0 +1,44 @@
+name: Docker
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - edge
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scenario:
+    name: ${{ matrix.platform.system }} / ${{ matrix.scenario }}
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - minimal
+          - features
+          - provider
+        platform:
+          - runner: ubuntu-latest
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+    runs-on: ${{ matrix.platform.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: cachix/install-nix-action@v31
+      - name: Run configuration test
+        run: nix build ".#checks.${{ matrix.platform.system }}.container-${{ matrix.scenario }}-tests" -L
+      - name: Build, load, and run image
+        run: |
+          set -euo pipefail
+          image_path="$(nix build ".#packages.${{ matrix.platform.system }}.docker-${{ matrix.scenario }}" --print-out-paths --no-link)"
+          docker load < "$image_path"
+          test "$(docker inspect --format '{{ index .Config.Labels "io.nixpi.scenario" }}' "nixpi-ci-${{ matrix.scenario }}:edge")" = "${{ matrix.scenario }}"
+          docker run --rm "nixpi-ci-${{ matrix.scenario }}:edge"

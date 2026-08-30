@@ -1,63 +1,43 @@
-{ pkgs }:
+{
+  pkgs,
+  self,
+  system,
+}:
 
 let
-  lib = pkgs.lib;
-
-  # Minimal mock of Home Manager module options
-  mockHomeManagerModule = {
-    options.home = {
-      packages = lib.mkOption {
-        type = lib.types.listOf lib.types.package;
-        default = [ ];
-      };
-      file = lib.mkOption {
-        type = lib.types.attrsOf (
-          lib.types.submodule {
-            options.source = lib.mkOption {
-              type = lib.types.package;
-            };
-          }
-        );
-        default = { };
-      };
-      sessionVariables = lib.mkOption {
-        type = lib.types.attrsOf lib.types.str;
-        default = { };
-      };
-    };
-  };
-
-  evaluated = lib.evalModules {
+  configuration = self.inputs.home-manager.lib.homeManagerConfiguration {
+    inherit pkgs;
     modules = [
-      mockHomeManagerModule
-      ../../integrations/home-manager.nix
+      self.homeModules.default
       {
+        home = {
+          username = "nixpi-test";
+          homeDirectory = "/invalid/nixpi-test-home";
+          stateVersion = "26.05";
+        };
         programs.pi = {
           enable = true;
           settings.defaultProvider = "openai";
-          environment.variables.PI_CUSTOM_VAR = "1";
+          environment.variables.PI_HOME_MANAGER_TEST = "enabled";
           extensions.echo.enable = true;
           providers.custom = {
             baseUrl = "http://localhost:8080";
-            models = [ { id = "m1"; } ];
+            models = [ { id = "integration-model"; } ];
           };
         };
       }
     ];
-    specialArgs = {
-      inherit pkgs;
-    };
   };
 
-  cfg = evaluated.config;
-  hasSettingsFile = cfg.home.file ? ".pi/agent/settings.json";
-  hasModelsFile = cfg.home.file ? ".pi/agent/models.json";
-  hasPackage = lib.length cfg.home.packages > 0;
-  hasEnvVar = cfg.home.sessionVariables.PI_CUSTOM_VAR == "1";
-
-  allPass = hasSettingsFile && hasModelsFile && hasPackage && hasEnvVar;
+  cfg = configuration.config;
+  allPass =
+    pkgs.stdenv.hostPlatform.system == system
+    && cfg.home.file ? ".pi/agent/settings.json"
+    && cfg.home.file ? ".pi/agent/models.json"
+    && builtins.elem cfg.programs.pi.finalPackage cfg.home.packages
+    && cfg.home.sessionVariables.PI_HOME_MANAGER_TEST == "enabled";
 in
-pkgs.runCommand "nixpi-hm-test" { } ''
-  ${lib.optionalString (!allPass) "echo 'Home Manager integration test failed' >&2; exit 1"}
+pkgs.runCommand "nixpi-home-manager-integration-test" { } ''
+  ${pkgs.lib.optionalString (!allPass) "echo 'Home Manager integration test failed' >&2; exit 1"}
   echo "Home Manager integration test passed" > "$out"
 ''

@@ -7,8 +7,9 @@
 let
   promptPkg = pkgs.callPackage ../../packages/prompts/research-lawyer-opportunities { };
   ledgerPkg = pkgs.callPackage ../../packages/evidence-ledger { };
+  duckdbPython = import ../../lib/duckdb-python.nix { inherit pkgs; };
   pyEnv = pkgs.python3.withPackages (ps: [
-    ps.duckdb
+    duckdbPython
     ps.youtube-transcript-api
   ]);
 in

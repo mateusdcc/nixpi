@@ -1,18 +1,13 @@
 {
-  description = "Learning & Obsidian vault development shell with Pi";
+  description = "Deprecated learning environment compatibility template";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixpi.url = "github:mateusdcc/nixpi";
   };
 
   outputs =
-    {
-      self,
-      nixpkgs,
-      nixpi,
-      ...
-    }:
+    { nixpkgs, nixpi, ... }:
     let
       systems = [
         "x86_64-linux"
@@ -29,21 +24,7 @@
           pkgs = nixpkgs.legacyPackages.${system};
           learningPi = nixpi.lib.makePi {
             inherit pkgs;
-            modules = [
-              nixpi.piModules.profiles.learning
-              (
-                { config, ... }:
-                {
-                  programs.pi = {
-                    providers.antigravity.enable = true;
-                    settings = {
-                      defaultProvider = config.programs.pi.providers.antigravity;
-                      defaultModel = config.programs.pi.providers.antigravity.models."gemini-3.7-flash";
-                    };
-                  };
-                }
-              )
-            ];
+            modules = [ nixpi.piModules.profiles.learning ];
           };
         in
         {
@@ -54,10 +35,6 @@
               pkgs.ripgrep
               pkgs.python3
             ];
-
-            shellHook = ''
-              echo "[nixpi] Loaded learning devShell with configured Pi (${learningPi.name})"
-            '';
           };
         }
       );

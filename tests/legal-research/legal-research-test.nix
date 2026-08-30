@@ -5,8 +5,9 @@
 }:
 
 let
+  duckdbPython = import ../../lib/duckdb-python.nix { inherit pkgs; };
   pyEnv = pkgs.python3.withPackages (ps: [
-    ps.duckdb
+    duckdbPython
     ps.youtube-transcript-api
   ]);
   configuredPi = nixpiLib.makePi {

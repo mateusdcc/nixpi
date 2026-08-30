@@ -2,7 +2,7 @@
   description = "Project-specific development shell with Pi";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixpi.url = "github:mateusdcc/nixpi";
   };
 

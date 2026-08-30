@@ -2,7 +2,7 @@
   description = "Standalone configured Pi coding agent environment";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nixpi.url = "github:mateusdcc/nixpi";
   };
 

@@ -8,14 +8,15 @@
 let
   cfg = config.programs.pi;
 
-  # Helper to remove null values recursively
+  # Helper to remove null values recursively from attribute sets and lists.
   filterNulls =
-    attrs:
-    lib.filterAttrs (n: v: v != null) (
-      builtins.mapAttrs (
-        n: v: if builtins.isAttrs v && !lib.isDerivation v then filterNulls v else v
-      ) attrs
-    );
+    value:
+    if builtins.isAttrs value && !lib.isDerivation value then
+      lib.filterAttrs (_: v: v != null) (builtins.mapAttrs (_: v: filterNulls v) value)
+    else if builtins.isList value then
+      map filterNulls (builtins.filter (v: v != null) value)
+    else
+      value;
 
   # Collect packages and runtimePackages from enabled typed extensions
   enabledExtensions = lib.filterAttrs (n: ext: ext.enable or false) (cfg.extensions or { });
@@ -77,7 +78,8 @@ let
     skill: if builtins.isAttrs skill then skill.runtimePackages or [ ] else [ ]
   ) (if builtins.isList (cfg.skills or { }) then cfg.skills else builtins.attrValues enabledSkills);
 
-  allSkillsList = skillPackages ++ (cfg.rawSkills or [ ]);
+  allSkillsList = skillPackages ++ (cfg.rawSkills or [ ]) ++ (cfg.extraSkills or [ ]);
+  allExtensionsList = (cfg.rawExtensions or [ ]) ++ (cfg.extraExtensions or [ ]);
 
   # Extract passthru runtimePackages from all package derivations
   allPackagesList = cfg.packages ++ extensionPackages ++ providerPackages;
@@ -87,10 +89,11 @@ let
       pkg.passthru.runtimePackages
     else
       [ ]
-  ) (allPackagesList ++ cfg.rawExtensions ++ allSkillsList);
+  ) (allPackagesList ++ allExtensionsList ++ allSkillsList);
 
   allRuntimePackages = lib.unique (
     cfg.runtimePackages
+    ++ (cfg.extraPackages or [ ])
     ++ extensionRuntimePkgs
     ++ providerRuntimePkgs
     ++ skillRuntimePkgs
@@ -105,7 +108,7 @@ let
     cfg.settings
     // {
       packages = map toStringPath allPackagesList;
-      extensions = map toStringPath cfg.rawExtensions;
+      extensions = map toStringPath allExtensionsList;
       skills = map toStringPath allSkillsList;
       prompts = map toStringPath cfg.prompts;
       themes = map toStringPath cfg.themes;
@@ -156,6 +159,19 @@ let
     lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") allEnvVars
   );
 
+  requiredEnvChecks = lib.optionalString (cfg.environment.required != [ ]) ''
+    missingRequired=0
+    for requiredName in ${lib.concatMapStringsSep " " lib.escapeShellArg cfg.environment.required}; do
+      if [ -z "$(printenv "$requiredName" || true)" ]; then
+        printf 'nixpi: required environment variable %s is not set\n' "$requiredName" >&2
+        missingRequired=1
+      fi
+    done
+    if [ "$missingRequired" -ne 0 ]; then
+      exit 1
+    fi
+  '';
+
   pathPrefix = lib.makeBinPath allRuntimePackages;
 
   wrapper = pkgs.writeShellScriptBin "pi" ''
@@ -169,6 +185,9 @@ let
 
     # Export user environment variables
     ${envExports}
+
+    # Fail before startup when required credentials or configuration are missing
+    ${requiredEnvChecks}
 
     # If PI_CODING_AGENT_DIR is not explicitly overridden, manage a writable state directory
     if [ -z "''${PI_CODING_AGENT_DIR:-}" ]; then

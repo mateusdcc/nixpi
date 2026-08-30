@@ -1,23 +1,19 @@
 {
+  config,
   lib,
   pkgs,
-  config,
   ...
 }:
 
 let
-  cfg = config.programs.pi.skills.brazil-localization-test;
-  defaultPkg = pkgs.callPackage ../../packages/skills/brazil-localization-test {
-    mkPiSkill = (pkgs.callPackage ../../lib/mk-resource.nix { }).mkPiSkill;
-  };
+  factories = import ../../lib/module-factories.nix { inherit lib; };
 in
-{
-  options.programs.pi.skills.brazil-localization-test = {
-    enable = lib.mkEnableOption "Pi Brazil localization test skill";
-    package = lib.mkOption {
-      type = lib.types.package;
-      default = defaultPkg;
-      description = "Package providing the brazil-localization-test skill.";
+factories.mkPiSkillModule {
+  name = "brazil-localization-test";
+  description = "Pi Brazil localization test skill";
+  defaultPackage =
+    pkgs:
+    pkgs.callPackage ../../packages/skills/brazil-localization-test {
+      mkPiSkill = (pkgs.callPackage ../../lib/mk-resource.nix { }).mkPiSkill;
     };
-  };
-}
+} { inherit config lib pkgs; }
