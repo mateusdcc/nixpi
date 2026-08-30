@@ -28,7 +28,9 @@ Yes. Use `lib.nixpi.makePi` in a standalone flake, or initialize the [standalone
 
 ## How do I add an extension or skill that nixpi does not package?
 
-Package it with `mkPiExtension` or `mkPiSkill`, then compose an option module with `mkPiExtensionModule` or `mkPiSkillModule`. The [Library API](reference/library.md) includes each function signature and example.
+For popular community extensions like `subagents`, `archify`, `image-tools`, and `app-screenshot`, use the companion [**`pi-packages`**](https://github.com/mateusdcc/pi-packages) repository.
+
+To author your own custom package, write it with `mkPiExtension` or `mkPiSkill`, then compose an option module with `mkPiExtensionModule` or `mkPiSkillModule`. The [Library API](reference/library.md) includes each function signature and example.
 
 ## Why did I get a deprecation warning?
 

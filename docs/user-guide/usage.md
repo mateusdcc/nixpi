@@ -49,13 +49,61 @@ This is the smallest persistent configuration. Put it in a project `flake.nix`, 
 
 Run it with `nix run .#`. `environment.required` checks that a name exists at launch time. It does not put secret values in the Nix store.
 
+## Using `pi-packages` for Extended Extensions & Skills
+
+For advanced capabilities like multi-agent swarms (`subagents`), on-demand architecture diagramming (`lazy-archify`), clipboard image tools (`image-tools`), and native macOS screenshotting (`app-screenshot`), add the companion [**`pi-packages`**](https://github.com/mateusdcc/pi-packages) flake:
+
+```nix
+{
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpi.url = "github:mateusdcc/nixpi";
+    pi-packages = {
+      url = "github:mateusdcc/pi-packages";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.nixpi.follows = "nixpi";
+    };
+  };
+
+  outputs = { nixpkgs, nixpi, pi-packages, ... }:
+    let
+      system = "aarch64-darwin";
+      pkgs = nixpkgs.legacyPackages.${system};
+    in {
+      packages.${system}.default = nixpi.lib.makePi {
+        inherit pkgs;
+        modules = [
+          pi-packages.piModules.default
+          {
+            programs.pi = {
+              extensions = {
+                subagents.enable = true;
+                lazy-archify.enable = true;
+                image-tools.enable = true;
+                app-screenshot.enable = true;
+              };
+              skills = {
+                commit-style.enable = true;
+                generative-ui.enable = true;
+              };
+            };
+          }
+        ];
+      };
+    };
+}
+```
+
 ## Home Manager
 
 Import `nixpi.homeModules.default`, then configure the same module namespace:
 
 ```nix
 {
-  imports = [ inputs.nixpi.homeModules.default ];
+  imports = [
+    inputs.nixpi.homeModules.default
+    inputs.pi-packages.homeModules.default
+  ];
 
   programs.pi = {
     enable = true;
@@ -64,6 +112,7 @@ Import `nixpi.homeModules.default`, then configure the same module namespace:
       enable = true;
       mode = "balanced";
     };
+    extensions.subagents.enable = true;
     environment.required = [ "ANTHROPIC_API_KEY" ];
   };
 }

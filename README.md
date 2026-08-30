@@ -85,6 +85,10 @@ programs.pi = {
 
 Never put API keys in `environment.variables` or another Nix expression. Provide secret values through the runtime environment. nixpi checks required names before Pi starts.
 
+## Ecosystem & Extensions
+
+For additional extensions, multi-agent swarms (`subagents`), on-demand architecture diagramming (`lazy-archify`), screenshot tools (`app-screenshot`), and extra AI skills, see the companion [**`pi-packages`**](https://github.com/mateusdcc/pi-packages) repository.
+
 ## Public API
 
 The canonical entry points are:

@@ -26,6 +26,8 @@ Import the complete module with `nixpi.piModules.default`, or import a focused m
 
 `piModules.extensions.obsidian` is a deprecated compatibility alias. Configure the replacement from deep-comprehension-engine for new work.
 
+For additional extensions like `subagents`, `lazy-archify`, `image-tools`, and `app-screenshot`, import `piModules.default` from the [**`pi-packages`**](https://github.com/mateusdcc/pi-packages) flake.
+
 ## Skills
 
 Enable a bundled skill through `programs.pi.skills`:
@@ -46,7 +48,7 @@ programs.pi.skills = {
 
 The corresponding public module outputs are `commit-style`, `legalPainDiscovery`, `voiceOfCustomerMining`, `evidenceDeduplication`, `legalMarketSegmentation`, `competitorGapAnalysis`, `brazilLocalizationTest`, `opportunityScoring`, and `productOpportunityReport` under `piModules.skills`.
 
-The former learning skills under `piModules.skills` are compatibility aliases that warn and point to deep-comprehension-engine.
+The former learning skills under `piModules.skills` are compatibility aliases that warn and point to deep-comprehension-engine. Extended skills like `generative-ui` and `agy-customizations` are available in [**`pi-packages`**](https://github.com/mateusdcc/pi-packages).
 
 ## Providers
 
