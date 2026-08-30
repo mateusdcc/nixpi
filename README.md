@@ -2,9 +2,6 @@
 
 Declarative Nix configuration for the [Pi coding agent](https://github.com/badlogic/pi-mono), with typed modules, packaged extensions and skills, reusable profiles, and host integrations.
 
-> [!NOTE]
-> This branch is the edge release candidate. It preserves the 1.x public contract while testing the architecture planned for `main`.
-
 ## Why nixpi
 
 - One `programs.pi` schema for standalone packages, Home Manager, NixOS, and nix-darwin.
@@ -18,14 +15,14 @@ Declarative Nix configuration for the [Pi coding agent](https://github.com/badlo
 Run the default configuration directly:
 
 ```console
-nix run github:mateusdcc/nixpi/edge
+nix run github:mateusdcc/nixpi
 ```
 
 For a persistent configuration, add nixpi to your flake and import the host module:
 
 ```nix
 {
-  inputs.nixpi.url = "github:mateusdcc/nixpi/edge";
+  inputs.nixpi.url = "github:mateusdcc/nixpi";
 
   outputs = { home-manager, nixpkgs, nixpi, ... }: {
     homeConfigurations.me = home-manager.lib.homeManagerConfiguration {

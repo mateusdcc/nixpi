@@ -1,11 +1,9 @@
 # Getting started
 
-This guide uses the `edge` branch until it is promoted to `main`.
-
 ## Run the default package
 
 ```console
-nix run github:mateusdcc/nixpi/edge
+nix run github:mateusdcc/nixpi
 ```
 
 The default package includes a declarative configuration with safe defaults. Pin the input in a flake for repeatable installations.
@@ -16,7 +14,7 @@ Add the input and import the module:
 
 ```nix
 {
-  inputs.nixpi.url = "github:mateusdcc/nixpi/edge";
+  inputs.nixpi.url = "github:mateusdcc/nixpi";
 
   outputs = { home-manager, nixpkgs, nixpi, ... }: {
     homeConfigurations.me = home-manager.lib.homeManagerConfiguration {

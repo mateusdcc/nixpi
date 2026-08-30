@@ -6,7 +6,7 @@ Use the same `programs.pi` options in every integration. The difference is where
 
 | Situation | Entry point | Run it |
 | --- | --- | --- |
-| One-off trial | `packages.<system>.default` | `nix run github:mateusdcc/nixpi/edge` |
+| One-off trial | `packages.<system>.default` | `nix run github:mateusdcc/nixpi` |
 | Project-owned agent | `lib.nixpi.makePi` | `nix run .#` |
 | User environment | `homeModules.default` | activate Home Manager |
 | NixOS host | `nixosModules.default` | rebuild NixOS |
@@ -20,7 +20,7 @@ This is the smallest persistent configuration. Put it in a project `flake.nix`, 
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05";
-    nixpi.url = "github:mateusdcc/nixpi/edge";
+    nixpi.url = "github:mateusdcc/nixpi";
   };
 
   outputs = { nixpkgs, nixpi, ... }:

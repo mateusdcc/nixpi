@@ -3,7 +3,7 @@
 Initialize a new directory with the template that matches how Pi will be used:
 
 ```console
-nix flake init --template github:mateusdcc/nixpi/edge#standalone
+nix flake init --template github:mateusdcc/nixpi#standalone
 ```
 
 | Template | Command suffix | Use it for |

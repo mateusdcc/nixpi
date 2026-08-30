@@ -3,10 +3,10 @@
 ## Release channels
 
 - `main` is the stable channel.
-- `edge` is the release candidate for the next stable update.
+- `edge` is the release candidate for upcoming changes.
 - Version tags use Semantic Versioning and the form `vMAJOR.MINOR.PATCH`.
 
-The edge architecture is scheduled for promotion to `main` on August 29, 2026, after public transition testing.
+The unified architecture was promoted to `main` as `v1.0.0` on August 30, 2026.
 
 ## Compatibility policy
 

@@ -16,7 +16,7 @@ Those values are intentionally not build inputs. nixpi produces immutable config
 
 ## Which branch should I pin?
 
-This documentation covers `edge`, the 1.x release candidate. Pin the branch deliberately, commit `flake.lock`, and read warnings when updating. Use the versioned compatibility policy in the README and [edge migration guide](migrations/edge.md) when moving existing configurations.
+Pin `main` for the stable release channel or track specific version tags like `v1.0.0`. Pin the input deliberately in your `flake.nix`, commit `flake.lock`, and read warnings when updating. Use the versioned compatibility policy in the README and [migration guide](migrations/edge.md) when moving older configurations.
 
 ## How do I see every available option?
 

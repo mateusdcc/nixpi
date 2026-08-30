@@ -6,7 +6,7 @@ title = "nixpi"
 
 [output.html]
 git-repository-url = "https://github.com/mateusdcc/nixpi"
-edit-url-template = "https://github.com/mateusdcc/nixpi/edit/edge/{path}"
+edit-url-template = "https://github.com/mateusdcc/nixpi/edit/main/{path}"
 site-url = "/nixpi/"
 
 [output.html.search]
