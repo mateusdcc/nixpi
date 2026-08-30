@@ -131,4 +131,4 @@ nix flake check --all-systems --no-build -L
 
 CI performs all-system evaluation and native builds on x86_64 Linux, ARM Linux, Intel macOS, and Apple Silicon macOS. Tagged versions matching `v*` are validated before a GitHub release is published.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change, [SECURITY.md](SECURITY.md) for private vulnerability reporting, and [MAINTAINING.md](MAINTAINING.md) for compatibility and release policy.
+See [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change, [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community guidelines, [SECURITY.md](SECURITY.md) for private vulnerability reporting, and [MAINTAINING.md](MAINTAINING.md) for compatibility and release policy.
