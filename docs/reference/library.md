@@ -36,15 +36,17 @@ in pi.extend {
 
 ### `mkPiExtension`
 
-`mkPiExtension { pname, src, version ? "0.1.0", runtimePackages ? [], runtimeEnvironment ? {}, piManifest ? {}, meta ? {}, ... }` packages an extension directory. It writes a default Pi manifest if `src` does not provide `package.json`.
+`mkPiExtension { pname, src ? null, content ? null, entrypoint ? null, version ? "0.1.0", runtimePackages ? [], runtimeEnvironment ? {}, piManifest ? {}, meta ? {}, ... }` packages an extension. It accepts a directory `src`, inline JavaScript/TypeScript code string `content`, or single-file script `entrypoint`. It writes a default Pi manifest if the source does not provide `package.json`.
 
 ```nix
+# Using inline content
 myExtension = nixpi.lib.nixpi.mkPiExtension {
   inherit pkgs;
   pname = "hello";
-  src = pkgs.writeTextDir "extensions/index.js" ''
+  content = ''
     export default pi => pi.registerCommand("hello", { handler: () => console.log("hello") });
   '';
+  runtimePackages = [ pkgs.git ];
 };
 ```
 
