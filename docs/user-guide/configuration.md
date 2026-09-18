@@ -37,12 +37,88 @@ programs.pi = {
 | --- | --- |
 | `settings` | Pi settings serialized into the generated settings file. |
 | `providers` | Provider endpoints, package support, models, and credentials references. |
-| `extensions` | Enable packaged extensions and provide extension-specific settings. |
-| `skills` | Enable skill packages that Pi can discover. |
+| `extensions` | Enable prepackaged extensions and configure settings. |
+| `customExtensions` | Declarative custom extensions (inline code, entrypoint, or source directory). |
+| `skills` | Enable prepackaged skill packages. |
+| `customSkills` | Declarative custom skills (inline Markdown or directory). |
+| `customPrompts` | Declarative custom prompt templates. |
+| `customThemes` | Declarative custom color themes. |
 | `prompts` and `themes` | Add prompt and theme resources. |
 | `runtimePackages` | Commands available to Pi and extensions at runtime. |
 | `environment` | Non-secret variables and required environment variable names. |
 | `resources` and `extraPackages` | Compose custom resource and package inputs. |
+
+## Declarative custom resources
+
+Declare custom extensions, skills, prompts, and themes directly in your configuration without boilerplate:
+
+```nix
+programs.pi = {
+  enable = true;
+
+  # Custom extensions
+  customExtensions = {
+    # 1. Inline Javascript / Typescript
+    git-status = {
+      enable = true;
+      version = "1.0.0";
+      runtimePackages = [ pkgs.git ];
+      content = ''
+        export default function(pi) {
+          pi.registerCommand("git-status", {
+            description: "Show short git status",
+            handler: async (args, ctx) => {
+              const { execSync } = require("child_process");
+              console.log(execSync("git status -s", { encoding: "utf-8" }));
+            }
+          });
+        }
+      '';
+    };
+
+    # 2. Single file entrypoint
+    theme-picker = {
+      enable = true;
+      entrypoint = ./scripts/theme-picker.js;
+      runtimePackages = [ pkgs.jq ];
+    };
+
+    # 3. Source directory
+    advanced-analyzer = {
+      enable = true;
+      src = ./my-extension-dir;
+      runtimePackages = [ pkgs.ripgrep pkgs.fd ];
+    };
+  };
+
+  # Custom skills
+  customSkills.code-reviewer = {
+    enable = true;
+    description = "Perform rigorous code review";
+    content = ''
+      # Code Review Skill
+      Analyze code for architectural cleanliness and potential bugs.
+    '';
+  };
+
+  # Custom prompts
+  customPrompts.refactor = {
+    enable = true;
+    description = "Refactor selected code";
+    argumentHint = "[function-name]";
+    content = "Please refactor the following function to follow Clean Code: $ARGUMENTS";
+  };
+
+  # Custom themes
+  customThemes.neon-dark = {
+    enable = true;
+    colors = {
+      accent = "#00ffcc";
+      background = "#0d1117";
+    };
+  };
+};
+```
 
 ## Add a local provider
 

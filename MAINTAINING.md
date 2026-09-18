@@ -19,6 +19,15 @@ Public flake outputs, module options, and library functions introduced in 1.x re
 
 Security fixes may override this policy when preserving behavior would leave users exposed. Document the exception in the release notes.
 
+## Upstream tracking and automation
+
+Upstream Pi updates (`@earendil-works/pi-coding-agent`) are monitored through:
+
+1. `.github/workflows/update-upstream.yml`: Automated GitHub Action running on a daily schedule (04:00 UTC) and on `repository_dispatch` (events: `upstream_release`, `upstream_pi_release`, `pi_update`).
+2. `./scripts/update-upstream.sh`: Local CLI helper to check or update upstream dependencies.
+   - Run `./scripts/update-upstream.sh --check` to check for new upstream releases.
+   - Run `./scripts/update-upstream.sh --update` to bump flake inputs and verify checks.
+
 ## Release process
 
 1. Confirm `edge` passes every required CI job.

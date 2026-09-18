@@ -1,0 +1,80 @@
+name: Upstream Dependency Tracker
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  repository_dispatch:
+    types:
+      - upstream_release
+      - upstream_pi_release
+      - pi_update
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force update even if versions match'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  track-upstream:
+    name: Track Upstream Pi Releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Check Upstream Status
+        id: check
+        run: |
+          chmod +x ./scripts/update-upstream.sh
+          CHECK_JSON=$(./scripts/update-upstream.sh --json || true)
+          echo "json=$CHECK_JSON" >> $GITHUB_OUTPUT
+
+          CURRENT=$(echo "$CHECK_JSON" | jq -r '.current')
+          LATEST=$(echo "$CHECK_JSON" | jq -r '.latest')
+          HAS_UPDATE=$(echo "$CHECK_JSON" | jq -r '.hasUpdate')
+
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            HAS_UPDATE="true"
+          fi
+
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "has_update=$HAS_UPDATE" >> $GITHUB_OUTPUT
+
+      - name: Update Flake Inputs and Check
+        if: steps.check.outputs.has_update == 'true'
+        run: |
+          ./scripts/update-upstream.sh --update
+
+      - name: Create Pull Request
+        if: steps.check.outputs.has_update == 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          commit-message: "chore(deps): update upstream Pi to v${{ steps.check.outputs.latest }}"
+          title: "chore(upstream): update Pi coding agent to v${{ steps.check.outputs.latest }}"
+          branch: "automation/upstream-pi-v${{ steps.check.outputs.latest }}"
+          delete-branch: true
+          labels: |
+            dependencies
+            automated-pr
+          body: |
+            ## Upstream Pi Update Detected
+
+            An update for `@earendil-works/pi-coding-agent` was detected.
+
+            - **Previous Version:** `${{ steps.check.outputs.current }}`
+            - **New Version:** `${{ steps.check.outputs.latest }}`
+            - **Trigger:** `${{ github.event_name }}`
+
+            ### Verification
+            - `nix flake update` completed.
+            - `nix flake check` passed.
