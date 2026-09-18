@@ -17,6 +17,7 @@
     in
     {
       eval-tests = pkgs.callPackage ../tests/eval/eval-test.nix { inherit nixpiLib; };
+      custom-resources-tests = pkgs.callPackage ../tests/eval/custom-resources-test.nix { inherit nixpiLib; };
       invalid-option-tests = pkgs.callPackage ../tests/eval/invalid-option-test.nix { inherit nixpiLib; };
       build-tests = pkgs.callPackage ../tests/build/build-test.nix { inherit nixpiLib; };
       hm-tests = pkgs.callPackage ../tests/integration/hm-test.nix { inherit self system; };

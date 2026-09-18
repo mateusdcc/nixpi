@@ -7,6 +7,7 @@
     ./providers.nix
     ./environment.nix
     ./resources.nix
+    ./custom.nix
     ./output.nix
   ];
 }
