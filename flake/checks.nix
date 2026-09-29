@@ -17,7 +17,9 @@
     in
     {
       eval-tests = pkgs.callPackage ../tests/eval/eval-test.nix { inherit nixpiLib; };
-      custom-resources-tests = pkgs.callPackage ../tests/eval/custom-resources-test.nix { inherit nixpiLib; };
+      custom-resources-tests = pkgs.callPackage ../tests/eval/custom-resources-test.nix {
+        inherit nixpiLib;
+      };
       invalid-option-tests = pkgs.callPackage ../tests/eval/invalid-option-test.nix { inherit nixpiLib; };
       build-tests = pkgs.callPackage ../tests/build/build-test.nix { inherit nixpiLib; };
       hm-tests = pkgs.callPackage ../tests/integration/hm-test.nix { inherit self system; };
@@ -32,6 +34,7 @@
         legalResearchProfile = self.piModules.profiles.legalResearch;
       };
       public-api-tests = pkgs.callPackage ../tests/contract/public-api-test.nix { inherit self; };
+      updater-tests = pkgs.callPackage ../tests/unit/updater-test.nix { };
       documentation = self.packages.${system}.docs;
     }
     // pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
