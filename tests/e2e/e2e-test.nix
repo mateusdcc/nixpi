@@ -1,6 +1,13 @@
 { pkgs, nixpiLib }:
 
 let
+  testEntrypointTs = pkgs.writeText "custom-entrypoint.ts" ''
+    export default function(pi: any) {
+      const tsNum: number = 777;
+      console.error(`CUSTOM_ENTRYPOINT_TS_LOADED:''${tsNum}`);
+    }
+  '';
+
   configuredPi = nixpiLib.makePi {
     inherit pkgs;
     modules = [
@@ -9,11 +16,66 @@ let
           enable = true;
           settings = {
             defaultProvider = "openai";
-            theme = "dark";
+            theme = "custom-e2e-theme";
           };
           extensions = {
             echo.enable = true;
             ripgrep-search.enable = true;
+          };
+          customExtensions = {
+            inline-ts = {
+              enable = true;
+              content = ''
+                export default function(pi: any) {
+                  const x: number = 999;
+                  console.error(`CUSTOM_INLINE_TS_LOADED:''${x}`);
+                }
+              '';
+              runtimePackages = [ pkgs.jq ];
+              runtimeEnvironment = {
+                CUSTOM_TS_EXT_ENV = "loaded-successfully";
+              };
+            };
+            entrypoint-ts = {
+              enable = true;
+              entrypoint = testEntrypointTs;
+            };
+            disabled-ext = {
+              enable = false;
+              content = ''
+                export default function() {
+                  console.error("DISABLED_EXT_LOADED");
+                }
+              '';
+            };
+          };
+          customSkills = {
+            e2e-skill = {
+              enable = true;
+              description = "E2E custom skill";
+              content = "# E2E Custom Skill Instructions";
+            };
+            disabled-skill = {
+              enable = false;
+              description = "Disabled skill";
+            };
+          };
+          customPrompts = {
+            e2e-prompt = {
+              enable = true;
+              description = "E2E custom prompt";
+              argumentHint = "[arg]";
+              content = "E2E Prompt content: $ARGUMENTS";
+            };
+          };
+          customThemes = {
+            custom-e2e-theme = {
+              enable = true;
+              colors = {
+                accent = "#ff00ff";
+                bg = "#000000";
+              };
+            };
           };
           environment.variables = {
             PI_TEST_ENV_VAR = "nixpi-verified";
@@ -55,15 +117,33 @@ pkgs.runCommand "nixpi-e2e-test"
       exit 1
     fi
 
-    # 3. Verify wrapper script contains ripgrep in PATH
+    # 3. Verify wrapper script contains ripgrep and jq in PATH
     grep -q "ripgrep" "${configuredPi}/bin/pi" || (echo "Error: ripgrep was not in pi wrapper PATH" >&2; exit 1)
+    grep -q "jq" "${configuredPi}/bin/pi" || (echo "Error: jq was not in pi wrapper PATH" >&2; exit 1)
 
-    # 4. Test safe non-network model listing with offline flag
-    "${configuredPi}/bin/pi" --list-models || true
+    # 4. Verify wrapper script contains custom runtime environment variable
+    grep -q "CUSTOM_TS_EXT_ENV=loaded-successfully" "${configuredPi}/bin/pi" || (echo "Error: CUSTOM_TS_EXT_ENV was not exported in wrapper" >&2; exit 1)
 
-    # 5. Verify mutable state: Ensure auth.json and config were created in writable location
+    # 5. Test safe non-network model listing and verify custom TypeScript extension loading
+    PI_LOGS=$("${configuredPi}/bin/pi" --list-models 2>&1 || true)
+    echo "$PI_LOGS"
+
+    echo "$PI_LOGS" | grep -q "CUSTOM_INLINE_TS_LOADED:999" || (echo "Error: inline TS extension was not loaded by Pi" >&2; exit 1)
+    echo "$PI_LOGS" | grep -q "CUSTOM_ENTRYPOINT_TS_LOADED:777" || (echo "Error: entrypoint TS extension was not loaded by Pi" >&2; exit 1)
+
+    if echo "$PI_LOGS" | grep -q "DISABLED_EXT_LOADED"; then
+      echo "Error: disabled extension was loaded by Pi" >&2
+      exit 1
+    fi
+
+    # 6. Verify mutable state: Ensure auth.json and config were created in writable location
     test -d "$XDG_DATA_HOME/nixpi/agent"
     test -f "$XDG_DATA_HOME/nixpi/agent/settings.json"
+
+    # 7. Verify settings.json contains custom skill, prompt, and theme
+    grep -q "e2e-skill" "$XDG_DATA_HOME/nixpi/agent/settings.json"
+    grep -q "e2e-prompt" "$XDG_DATA_HOME/nixpi/agent/settings.json"
+    grep -q "custom-e2e-theme" "$XDG_DATA_HOME/nixpi/agent/settings.json"
 
     echo "E2E verification passed successfully" > "$out"
   ''
