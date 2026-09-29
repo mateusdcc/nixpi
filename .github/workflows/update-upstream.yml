@@ -35,8 +35,19 @@ jobs:
         id: check
         run: |
           chmod +x ./scripts/update-upstream.sh
-          CHECK_JSON=$(./scripts/update-upstream.sh --json || true)
-          echo "json=$CHECK_JSON" >> $GITHUB_OUTPUT
+
+          set +e
+          CHECK_JSON=$(./scripts/update-upstream.sh --check --json)
+          EXIT_CODE=$?
+          set -e
+
+          if [ "$EXIT_CODE" -eq 1 ]; then
+            echo "Error checking upstream status:" >&2
+            echo "$CHECK_JSON" >&2
+            exit 1
+          fi
+
+          echo "json=$CHECK_JSON" >> "$GITHUB_OUTPUT"
 
           CURRENT=$(echo "$CHECK_JSON" | jq -r '.current')
           LATEST=$(echo "$CHECK_JSON" | jq -r '.latest')
@@ -46,35 +57,83 @@ jobs:
             HAS_UPDATE="true"
           fi
 
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-          echo "latest=$LATEST" >> $GITHUB_OUTPUT
-          echo "has_update=$HAS_UPDATE" >> $GITHUB_OUTPUT
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+          echo "latest=$LATEST" >> "$GITHUB_OUTPUT"
+          echo "has_update=$HAS_UPDATE" >> "$GITHUB_OUTPUT"
 
-      - name: Update Flake Inputs and Check
+      - name: Update Flake Inputs and Verify
+        id: update
         if: steps.check.outputs.has_update == 'true'
         run: |
+          PREV_PI="${{ steps.check.outputs.current }}"
+          UPSTREAM_PI="${{ steps.check.outputs.latest }}"
+
           ./scripts/update-upstream.sh --update
 
+          NEW_PI=$(nix eval --raw .#pi-unwrapped.version 2>/dev/null || echo "$PREV_PI")
+          LOCK_MODIFIED=$(git status --porcelain flake.lock)
+
+          if [ -n "$LOCK_MODIFIED" ]; then
+            LOCK_CHANGED="true"
+          else
+            LOCK_CHANGED="false"
+          fi
+
+          if [ "$NEW_PI" != "$PREV_PI" ]; then
+            PI_UPDATED="true"
+            PR_TITLE="chore(upstream): update Pi coding agent to v${NEW_PI}"
+            COMMIT_MSG="chore(deps): update upstream Pi to v${NEW_PI}"
+            BRANCH_NAME="automation/upstream-pi-v${NEW_PI}"
+          else
+            PI_UPDATED="false"
+            PR_TITLE="chore(deps): update flake inputs"
+            COMMIT_MSG="chore(deps): update flake inputs"
+            BRANCH_NAME="automation/flake-inputs-update"
+          fi
+
+          echo "prev_pi=$PREV_PI" >> "$GITHUB_OUTPUT"
+          echo "new_pi=$NEW_PI" >> "$GITHUB_OUTPUT"
+          echo "upstream_pi=$UPSTREAM_PI" >> "$GITHUB_OUTPUT"
+          echo "lock_changed=$LOCK_CHANGED" >> "$GITHUB_OUTPUT"
+          echo "pi_updated=$PI_UPDATED" >> "$GITHUB_OUTPUT"
+          echo "pr_title=$PR_TITLE" >> "$GITHUB_OUTPUT"
+          echo "commit_msg=$COMMIT_MSG" >> "$GITHUB_OUTPUT"
+          echo "branch_name=$BRANCH_NAME" >> "$GITHUB_OUTPUT"
+
       - name: Create Pull Request
-        if: steps.check.outputs.has_update == 'true'
+        if: steps.check.outputs.has_update == 'true' && steps.update.outputs.lock_changed == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
-          commit-message: "chore(deps): update upstream Pi to v${{ steps.check.outputs.latest }}"
-          title: "chore(upstream): update Pi coding agent to v${{ steps.check.outputs.latest }}"
-          branch: "automation/upstream-pi-v${{ steps.check.outputs.latest }}"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: ${{ steps.update.outputs.commit_msg }}
+          title: ${{ steps.update.outputs.pr_title }}
+          branch: ${{ steps.update.outputs.branch_name }}
           delete-branch: true
           labels: |
             dependencies
             automated-pr
           body: |
-            ## Upstream Pi Update Detected
+            ${{ steps.update.outputs.pi_updated == 'true' && format('## Upstream Pi Update in Nixpkgs
 
-            An update for `@earendil-works/pi-coding-agent` was detected.
+An update for `@earendil-works/pi-coding-agent` in Nixpkgs was detected and applied.
 
-            - **Previous Version:** `${{ steps.check.outputs.current }}`
-            - **New Version:** `${{ steps.check.outputs.latest }}`
-            - **Trigger:** `${{ github.event_name }}`
+- **Previous Packaged Version:** `{0}`
+- **New Packaged Version:** `{1}`
+- **Upstream npm Version:** `{2}`
+- **Trigger:** `{3}`
 
-            ### Verification
-            - `nix flake update` completed.
-            - `nix flake check` passed.
+### Verification
+- Evaluation verification (`nix flake check --all-systems --no-build -L`): passed.
+- Build verification (`nix flake check -L`): passed.
+', steps.update.outputs.prev_pi, steps.update.outputs.new_pi, steps.update.outputs.upstream_pi, github.event_name) || format('## Flake Inputs Update
+
+Flake inputs were updated. Upstream Pi npm release `{2}` is ahead of the Nixpkgs packaged version (`{0}`).
+
+- **Packaged Pi Version:** `{0}` (unchanged in Nixpkgs)
+- **Upstream npm Version:** `{2}` (not yet available in Nixpkgs)
+- **Trigger:** `{3}`
+
+### Verification
+- Evaluation verification (`nix flake check --all-systems --no-build -L`): passed.
+- Build verification (`nix flake check -L`): passed.
+', steps.update.outputs.prev_pi, steps.update.outputs.new_pi, steps.update.outputs.upstream_pi, github.event_name) }}
