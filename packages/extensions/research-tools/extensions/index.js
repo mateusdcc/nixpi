@@ -88,7 +88,7 @@ export default function (pi) {
     parameters: {
       type: "object",
       properties: {
-        actorId: { type: "string", description: "Approved actor identifier (e.g. apify/reddit-scraper, memo23/g2-reviews-scraper)" },
+        actorId: { type: "string", description: "Approved actor identifier (e.g. apify/reddit-scraper, automation-lab/g2-scraper)" },
         input: { type: "object", description: "Actor run input payload" },
       },
       required: ["actorId"],

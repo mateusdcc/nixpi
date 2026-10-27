@@ -13,7 +13,21 @@ let
 
   mkExtPkg =
     name: opt:
-    if opt.src != null || opt.content != null || opt.entrypoint != null then
+    let
+      sourcesCount =
+        (if opt.src != null then 1 else 0)
+        + (if opt.content != null then 1 else 0)
+        + (if opt.entrypoint != null then 1 else 0);
+    in
+    if !opt.enable then
+      pkgs.runCommand "pi-extension-${name}-disabled" { } ''
+        mkdir -p "$out"
+      ''
+    else if sourcesCount == 0 then
+      throw "programs.pi.customExtensions.${name}: One of `src`, `content`, or `entrypoint` must be provided when enabled."
+    else if sourcesCount > 1 then
+      throw "programs.pi.customExtensions.${name}: Conflicting source inputs provided. Provide exactly one of `src`, `content`, or `entrypoint`."
+    else
       nixpiLib.mkPiExtension {
         pname = opt.name;
         version = opt.version;
@@ -24,11 +38,7 @@ let
         runtimeEnvironment = opt.runtimeEnvironment;
         piManifest = opt.piManifest;
         meta.description = opt.description;
-      }
-    else
-      pkgs.runCommand "pi-extension-${name}-empty" { } ''
-        mkdir -p "$out"
-      '';
+      };
 
   customExtensionType = lib.types.submodule (
     { name, config, ... }:
@@ -99,6 +109,7 @@ let
               lib.types.str
               lib.types.int
               lib.types.bool
+              lib.types.path
             ]
           );
           default = { };
@@ -123,7 +134,16 @@ let
 
   mkSkillPkg =
     name: opt:
-    if opt.src != null then
+    let
+      sourcesCount = (if opt.src != null then 1 else 0) + (if opt.content != null then 1 else 0);
+    in
+    if !opt.enable then
+      pkgs.runCommand "pi-skill-${name}-disabled" { } ''
+        mkdir -p "$out"
+      ''
+    else if sourcesCount > 1 then
+      throw "programs.pi.customSkills.${name}: Conflicting source inputs provided. Provide either `src` or `content`, not both."
+    else if opt.src != null then
       opt.src
     else
       nixpiLib.mkPiSkill {
@@ -188,7 +208,14 @@ let
 
   mkPromptFile =
     name: opt:
-    if opt.src != null then
+    let
+      sourcesCount = (if opt.src != null then 1 else 0) + (if opt.content != null then 1 else 0);
+    in
+    if !opt.enable then
+      pkgs.writeText "${name}-disabled.md" ""
+    else if sourcesCount > 1 then
+      throw "programs.pi.customPrompts.${name}: Conflicting source inputs provided. Provide either `src` or `content`, not both."
+    else if opt.src != null then
       opt.src
     else
       nixpiLib.mkPiPrompt {
@@ -258,14 +285,21 @@ let
 
   mkThemeFile =
     name: opt:
-    if opt.src != null then
+    let
+      sourcesCount = (if opt.src != null then 1 else 0) + (if opt.colors != null then 1 else 0);
+    in
+    if !opt.enable then
+      pkgs.writeText "${name}-disabled.json" "{}"
+    else if sourcesCount > 1 then
+      throw "programs.pi.customThemes.${name}: Conflicting source inputs provided. Provide either `src` or `colors`, not both."
+    else if opt.src != null then
       opt.src
     else if opt.colors != null then
       nixpiLib.mkPiTheme {
         inherit (opt) name colors;
       }
     else
-      pkgs.writeText "${name}.json" "{}";
+      pkgs.writeText "${name}.json" (builtins.toJSON { inherit name; });
 
   customThemeType = lib.types.submodule (
     { name, config, ... }:

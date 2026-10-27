@@ -81,7 +81,7 @@ let
   allSkillsList = skillPackages ++ (cfg.rawSkills or [ ]) ++ (cfg.extraSkills or [ ]);
   allExtensionsList = (cfg.rawExtensions or [ ]) ++ (cfg.extraExtensions or [ ]);
 
-  # Extract passthru runtimePackages from all package derivations
+  # Extract passthru runtimePackages and runtimeEnvironment from all package derivations
   allPackagesList = cfg.packages ++ extensionPackages ++ providerPackages;
   passthruRuntimePkgs = lib.concatMap (
     pkg:
@@ -90,6 +90,16 @@ let
     else
       [ ]
   ) (allPackagesList ++ allExtensionsList ++ allSkillsList);
+
+  passthruEnvVars = lib.foldl' lib.recursiveUpdate { } (
+    lib.concatMap (
+      pkg:
+      if lib.isDerivation pkg && pkg ? passthru && pkg.passthru ? runtimeEnvironment then
+        [ pkg.passthru.runtimeEnvironment ]
+      else
+        [ ]
+    ) (allPackagesList ++ allExtensionsList ++ allSkillsList)
+  );
 
   allRuntimePackages = lib.unique (
     cfg.runtimePackages
@@ -154,9 +164,11 @@ let
       null;
 
   # Build wrapper script
-  allEnvVars = cfg.environment.variables // providerEnvVars;
+  allEnvVars = passthruEnvVars // providerEnvVars // cfg.environment.variables;
   envExports = lib.concatStringsSep "\n" (
-    lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") allEnvVars
+    lib.mapAttrsToList (k: v: "export ${k}=${lib.escapeShellArg (toString v)}") (
+      lib.filterAttrs (_: v: v != null) allEnvVars
+    )
   );
 
   requiredEnvChecks = lib.optionalString (cfg.environment.required != [ ]) ''

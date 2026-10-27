@@ -5,12 +5,21 @@
     {
       name,
       description ? "",
-      content ? "",
+      content ? null,
       src ? null,
       runtimePackages ? [ ],
       passthru ? { },
       meta ? { },
     }:
+    let
+      sourcesCount = (if src != null then 1 else 0) + (if content != null then 1 else 0);
+      _validateSources =
+        if sourcesCount > 1 then
+          throw "mkPiSkill: Conflicting source inputs provided for '${name}'. Provide either `src` or `content`, not both."
+        else
+          true;
+    in
+    assert _validateSources;
     if src != null then
       src
     else
@@ -22,7 +31,7 @@
           name: ${name}
           description: ${builtins.toJSON description}
           ---
-          ${content}
+          ${if content != null then content else ""}
         '';
         dontBuild = true;
         installPhase = ''
@@ -46,9 +55,16 @@
       name,
       description ? "",
       argumentHint ? null,
-      content,
+      content ? null,
+      src ? null,
     }:
     let
+      sourcesCount = (if src != null then 1 else 0) + (if content != null then 1 else 0);
+      _validateSources =
+        if sourcesCount > 1 then
+          throw "mkPiPrompt: Conflicting source inputs provided for '${name}'. Provide either `src` or `content`, not both."
+        else
+          true;
       frontmatter =
         if description != "" || argumentHint != null then
           ''
@@ -59,13 +75,30 @@
           ''
         else
           "";
+      resolvedContent = if content != null then content else "";
     in
-    pkgs.writeText "${name}.md" "${frontmatter}${content}";
+    assert _validateSources;
+    if src != null then src else pkgs.writeText "${name}.md" "${frontmatter}${resolvedContent}";
 
   mkPiTheme =
     {
       name,
-      colors,
+      colors ? null,
+      src ? null,
     }:
-    pkgs.writeText "${name}.json" (builtins.toJSON (colors // { inherit name; }));
+    let
+      sourcesCount = (if src != null then 1 else 0) + (if colors != null then 1 else 0);
+      _validateSources =
+        if sourcesCount > 1 then
+          throw "mkPiTheme: Conflicting source inputs provided for '${name}'. Provide either `src` or `colors`, not both."
+        else
+          true;
+    in
+    assert _validateSources;
+    if src != null then
+      src
+    else if colors != null then
+      pkgs.writeText "${name}.json" (builtins.toJSON (colors // { inherit name; }))
+    else
+      pkgs.writeText "${name}.json" (builtins.toJSON { inherit name; });
 }
